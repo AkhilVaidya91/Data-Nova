@@ -1,1 +1,6 @@
 streamlit == 1.39.0
+numpy
+pandas
+google-generativeai
+apify-client
+openpyxl
