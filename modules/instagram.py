@@ -224,40 +224,43 @@ def run(gemini_api_key, api_key, insta_ids, flag, max_posts, day, month, year, n
             if date < month_cutoff:
                 break
             
+            hashtag_found = False
             if search_hashtags is not None:
                 for hashtag in search_hashtags:
                     hashtag = str(hashtag)
                     hashtags = str(hashtags)
                     if hashtag.lower() in hashtags.lower():
                         ## continue normal execution
-                        pass
+                        hashtag_found = True
+                        break
                     else:
-                        continue
-            
-            ws.cell(row=row, column=1, value='Instagram')
-            ws.cell(row=row, column=2, value=str(caption))
-            ws.cell(row=row, column=3, value=str(hashtags))
-            ws.cell(row=row, column=4, value=str(alt))
-            ws.cell(row=row, column=5, value=str(post_type))
-            ws.cell(row=row, column=6, value=str(displayUrl))
-            ws.cell(row=row, column=7, value=likesCount)
-            ws.cell(row=row, column=8, value=commentsCount)
-            ws.cell(row=row, column=9, value=int(day))
-            ws.cell(row=row, column=10, value=int(month))
-            ws.cell(row=row, column=11, value=int(year))
-            ws.cell(row=row, column=12, value=ownerFullName)
-            ws.cell(row=row, column=13, value=str(isSponsored))
+                        hashtag_found = False
+            if hashtag_found or search_hashtags is None:
 
-            gen_caption = get_post_text(displayUrl, gemini_api_key)
-            if gen_caption:
-                ws.cell(row=row, column=12, value=gen_caption)
-            else:
-                ws.cell(row=row, column=12, value="Unable to generate caption")
+                ws.cell(row=row, column=1, value='Instagram')
+                ws.cell(row=row, column=2, value=str(caption))
+                ws.cell(row=row, column=3, value=str(hashtags))
+                ws.cell(row=row, column=4, value=str(alt))
+                ws.cell(row=row, column=5, value=str(post_type))
+                ws.cell(row=row, column=6, value=str(displayUrl))
+                ws.cell(row=row, column=7, value=likesCount)
+                ws.cell(row=row, column=8, value=commentsCount)
+                ws.cell(row=row, column=9, value=int(day))
+                ws.cell(row=row, column=10, value=int(month))
+                ws.cell(row=row, column=11, value=int(year))
+                ws.cell(row=row, column=12, value=ownerFullName)
+                ws.cell(row=row, column=13, value=str(isSponsored))
 
-            row_data = ('Instagram', str(caption), str(hashtags), str(alt), str(post_type), str(displayUrl), int(likesCount), int(commentsCount), day, month, year, str(ownerFullName), str(isSponsored), gen_caption)
-            
-            posts_df.loc[len(posts_df)] = row_data
-            row += 1
+                gen_caption = get_post_text(displayUrl, gemini_api_key)
+                if gen_caption:
+                    ws.cell(row=row, column=12, value=gen_caption)
+                else:
+                    ws.cell(row=row, column=12, value="Unable to generate caption")
+
+                row_data = ('Instagram', str(caption), str(hashtags), str(alt), str(post_type), str(displayUrl), int(likesCount), int(commentsCount), day, month, year, str(ownerFullName), str(isSponsored), gen_caption)
+                
+                posts_df.loc[len(posts_df)] = row_data
+                row += 1
 
         list_of_posts_dataframes.append(posts_df)
         list_of_account_dataframes.append(account_df)
