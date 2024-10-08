@@ -226,6 +226,8 @@ def run(gemini_api_key, api_key, insta_ids, flag, max_posts, day, month, year, n
             
             if search_hashtags is not None:
                 for hashtag in search_hashtags:
+                    hashtag = str(hashtag)
+                    hashtags = str(hashtags)
                     if hashtag.lower() in hashtags.lower():
                         ## continue normal execution
                         pass
