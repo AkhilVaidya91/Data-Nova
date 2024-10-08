@@ -114,7 +114,7 @@ def limit_posts_per_month(posts, max_posts_per_month):
     
     return limited_posts
 
-def run(gemini_api_key, api_key, insta_ids, flag, max_posts, day, month, year, num_month, output_folder_path):
+def run(gemini_api_key, api_key, insta_ids, flag, max_posts, day, month, year, num_month, output_folder_path, search_hashtags=None):
     
     output_folder_path = r"{}".format(output_folder_path)
     accounts = insta_ids
@@ -224,6 +224,13 @@ def run(gemini_api_key, api_key, insta_ids, flag, max_posts, day, month, year, n
             if date < month_cutoff:
                 break
             
+            if search_hashtags is not None:
+                for hashtag in search_hashtags:
+                    if hashtag.lower() in hashtags.lower():
+                        ## continue normal execution
+                        pass
+                    else:
+                        continue
             
             ws.cell(row=row, column=1, value='Instagram')
             ws.cell(row=row, column=2, value=str(caption))
