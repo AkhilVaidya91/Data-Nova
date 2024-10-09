@@ -1,18 +1,15 @@
-search_hashtags = ['Zomato']
-# search_hashtags = None
-hashtags = "['Zomato', 'aiueufb']"
+string = "Reviewed in India on 24 July 2024"
 
-for i in range(5):
-    found = False
-    if search_hashtags is not None:
-        for hashtag in search_hashtags:
-            hashtag = str(hashtag)
-            hashtags = str(hashtags)
-            if hashtag.lower() in hashtags.lower():
-                ## continue normal execution
-                found = True
-                break
-            else:
-                found = False
-    if found or search_hashtags is None:
-        print('abcd')
+def get_demographics(string):
+    if len(string) > 10:
+        strings = string.split(" ")
+        country = strings[2]
+        date = strings[4]
+        month = strings[5]
+        year = strings[6]
+
+        return str(country), int(date), str(month), int(year)
+    else:
+        return None, None, None, None
+    
+print(get_demographics(string))

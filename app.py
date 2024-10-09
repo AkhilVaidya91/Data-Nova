@@ -1,6 +1,6 @@
 import streamlit as st
 import os
-from modules import instagram, amazon_reviews, tripadvisor
+from modules import instagram, amazon_reviews, tripadvisor, booking
 import zipfile
 import io
 
@@ -17,7 +17,7 @@ def main():
     st.title("Data Nova")
     st.subheader("Transforming Big Data into Strategic Insights")
 
-    platform = st.selectbox("Platform Selection", ["Instagram", "Amazon Product Reviews", "TripAdvisor reviews"])
+    platform = st.selectbox("Platform Selection", ["Instagram", "Amazon Product Reviews", "TripAdvisor reviews", "Booking.com reviews"])
 
     if platform == "Instagram":        
         account_handles = []
@@ -99,6 +99,24 @@ def main():
                     label="Download Data",
                     data=f,
                     file_name=amazon_file_name,
+                    mime="application/xlsx"
+                )
+    elif platform == "Booking.com reviews":
+        num_reviews = st.number_input("Number of reviews", min_value=5, value=5)
+        link = st.text_input(f"Booking.com property URL: ")
+        links = []
+        links.append(link)
+        
+        if st.button("Analyze"):
+            df, booking_file_name = booking.run(apify_api_key, links, num_reviews, op_path)
+            st.write("Booking.com property reviews details.")
+            st.dataframe(df)
+            booking_file_name = os.path.join(op_path, booking_file_name)
+            with open(booking_file_name, "rb") as f:
+                st.download_button(
+                    label="Download Data",
+                    data=f,
+                    file_name=booking_file_name,
                     mime="application/xlsx"
                 )
 
