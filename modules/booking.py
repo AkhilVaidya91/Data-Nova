@@ -78,11 +78,11 @@ def run(api_key, links, max_posts, output_folder_path):
             ws.cell(row=row, column=6, value=int(stay_year))
             ws.cell(row=row, column=7, value=str(stay_length))
             ws.cell(row=row, column=8, value=str(review_title))
-            ws.cell(row=row, column=9, value=int(rating))
+            ws.cell(row=row, column=9, value=str(rating))
             ws.cell(row=row, column=10, value=str(liked))
             ws.cell(row=row, column=12, value=str(disliked))
 
-            row_values = ('Booking.com', str(user_name), str(user_location), str(room_info), str(stay_month), int(stay_year), str(stay_length), str(review_title), int(rating), str(liked), str(disliked))
+            row_values = ('Booking.com', str(user_name), str(user_location), str(room_info), str(stay_month), int(stay_year), str(stay_length), str(review_title), str(rating), str(liked), str(disliked))
             df.loc[len(df)] = row_values
             row += 1
         random_number = random.randint(1, 100000)
