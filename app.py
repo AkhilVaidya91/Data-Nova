@@ -1,6 +1,6 @@
 import streamlit as st
 import os
-from modules import instagram, amazon_reviews, tripadvisor, booking
+from modules import instagram, amazon_reviews, tripadvisor, booking, google_news
 import zipfile
 import io
 
@@ -17,7 +17,7 @@ def main():
     st.title("Data Nova")
     st.subheader("Transforming Big Data into Strategic Insights")
 
-    platform = st.selectbox("Platform Selection", ["Instagram", "Amazon Product Reviews", "TripAdvisor reviews", "Booking.com reviews"])
+    platform = st.selectbox("Platform Selection", ["Instagram", "Amazon Product Reviews", "TripAdvisor reviews", "Booking.com reviews", "Google News"])
 
     if platform == "Instagram":        
         account_handles = []
@@ -117,6 +117,23 @@ def main():
                     label="Download Data",
                     data=f,
                     file_name=booking_file_name,
+                    mime="application/xlsx"
+                )
+    elif platform == "Google News":
+        query = st.text_input("Enter the query: ")
+        start_date_ip = st.date_input('Enter the start date (older date)')
+        end_date = st.date_input('Enter the end date (new date)')
+        max_articles = st.number_input('Max news articles', min_value=2, value=5)
+        if st.button("Analyze"):
+            df, google_file_name = google_news.run(apify_api_key, query, max_articles, start_date_ip, end_date, op_path)
+            st.write("Google News details.")
+            st.dataframe(df)
+            google_file_name = os.path.join(op_path, google_file_name)
+            with open(google_file_name, "rb") as f:
+                st.download_button(
+                    label="Download Data",
+                    data=f,
+                    file_name=google_file_name,
                     mime="application/xlsx"
                 )
 
