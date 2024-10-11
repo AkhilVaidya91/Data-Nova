@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 from apify_client import ApifyClient
 from openpyxl import Workbook
 from openpyxl.drawing.image import Image as ExcelImage
