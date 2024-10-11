@@ -4,3 +4,5 @@ pandas
 google-generativeai
 apify-client
 openpyxl
+google-api-python-client
+youtube-transcript-api

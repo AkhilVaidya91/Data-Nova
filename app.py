@@ -1,12 +1,17 @@
 import streamlit as st
 import os
-from modules import instagram, amazon_reviews, tripadvisor, booking, google_news
+from modules import instagram, amazon_reviews, tripadvisor, booking, google_news, youtube, twitter
 import zipfile
 import io
 
 gemini_api_key = os.getenv('GEMINI_API_KEY')
 apify_api_key = os.getenv('APIFY_API_KEY')
 op_path = os.getenv('OP_PATH')
+
+gemini_api_key = 'AIzaSyAjDT14MAn93D1xJMsBtHeaNThaFIYeLbs'
+# apify_api_key = 'apify_api_eQL36WHTap9vl7eUsHIgjjcwWKqRL50NAMOS'
+apify_api_key = 'apify_api_KVxCV4c7NI3aUMUCDW2Wv4GjCzTgZu4awEVM'
+op_path = 'output'
 
 if not os.path.exists(op_path):
     os.makedirs(op_path)
@@ -17,7 +22,7 @@ def main():
     st.title("Data Nova")
     st.subheader("Transforming Big Data into Strategic Insights")
 
-    platform = st.selectbox("Platform Selection", ["Instagram", "Amazon Product Reviews", "TripAdvisor reviews", "Booking.com reviews", "Google News"])
+    platform = st.selectbox("Platform Selection", ["Instagram", "YouTube", "Twitter", "Amazon Product Reviews", "TripAdvisor reviews", "Booking.com reviews", "Google News"])
 
     if platform == "Instagram":        
         account_handles = []
@@ -134,6 +139,63 @@ def main():
                     label="Download Data",
                     data=f,
                     file_name=google_file_name,
+                    mime="application/xlsx"
+                )
+    elif platform == "YouTube":
+        channel_name = st.text_input("Enter the channel name: ")
+        max_videos = st.number_input("Max Videos", min_value=1, value=5)
+
+        if st.button("Analyze"):
+            channel_id = youtube.get_channel_id(channel_name)
+            if channel_id:
+                df_channel_stats, stats_filename = youtube.save_channel_statistics_to_excel(channel_id, op_path)
+                df_video_stats, videos_filename = youtube.scrape_channel_videos_to_excel(channel_id, channel_name,max_videos,3, op_path)
+                st.write("Channel Statistics")
+                st.dataframe(df_channel_stats)
+                st.write("Channel Videos")
+                st.dataframe(df_video_stats)
+
+                stats_filename = os.path.join(op_path, stats_filename)
+                videos_filename = os.path.join(op_path, videos_filename)
+
+                zip_buffer = io.BytesIO()
+                with zipfile.ZipFile(zip_buffer, 'w') as zipf:
+                    zipf.write(stats_filename, os.path.basename(stats_filename))
+                    zipf.write(videos_filename, os.path.basename(videos_filename))
+
+                zip_buffer.seek(0)
+
+                st.download_button(
+                    label="Download ZIP",
+                    data=zip_buffer,
+                    file_name="youtube_data.zip",
+                    mime="application/zip"
+                )
+            else:
+                st.write(f"Channel Name: {channel_name}, Channel ID not found.")
+
+    elif platform == "Twitter":
+
+        company_name = st.text_input("Enter the company name: ")
+        account = st.text_input("Enter account username: ")
+        account = [account]
+        since = st.date_input("Enter the 'since' date (YYYY-MM-DD): ")
+        until = st.date_input("Enter the 'until' date (YYYY-MM-DD): ")
+        num_tweets = st.number_input("Enter the number of tweets: ", min_value=1, value=10)
+        num_queries = st.number_input("Enter the number of hashtags: ", min_value=0, value=0)
+        search_queries = [st.text_input(f"Enter hashtag {i + 1}: ") for i in range(num_queries)]
+
+        if st.button("Analyze"):
+            df, filename = twitter.run(apify_api_key, gemini_api_key, company_name, 1, account, num_tweets, search_queries, since, until, num_tweets, op_path)
+            st.write("Twitter details.")
+            st.dataframe(df)
+            filename = os.path.join(op_path, filename)
+
+            with open(filename, "rb") as f:
+                st.download_button(
+                    label="Download Data",
+                    data=f,
+                    file_name=filename,
                     mime="application/xlsx"
                 )
 
