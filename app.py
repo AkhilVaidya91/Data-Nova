@@ -8,11 +8,6 @@ gemini_api_key = os.getenv('GEMINI_API_KEY')
 apify_api_key = os.getenv('APIFY_API_KEY')
 op_path = os.getenv('OP_PATH')
 
-gemini_api_key = 'AIzaSyAjDT14MAn93D1xJMsBtHeaNThaFIYeLbs'
-# apify_api_key = 'apify_api_eQL36WHTap9vl7eUsHIgjjcwWKqRL50NAMOS'
-apify_api_key = 'apify_api_KVxCV4c7NI3aUMUCDW2Wv4GjCzTgZu4awEVM'
-op_path = 'output'
-
 if not os.path.exists(op_path):
     os.makedirs(op_path)
 

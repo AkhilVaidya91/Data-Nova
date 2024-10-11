@@ -12,8 +12,9 @@ from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound, Tran
 
 # input_file_path=r'C:\Users\Vivek\Desktop\codes\sustainability\input_sheet.xlsx'
 # output_folder_path=r'C:\Users\Vivek\Desktop\codes\sustainability\output'
-api_key='AIzaSyAANPO201rs6TodUoyY7gdUE3PAcoNlUKc'
-# df=pd.read_excel(input_file_path)
+# api_key='AIzaSyAANPO201rs6TodUoyY7gdUE3PAcoNlUKc'
+api_key = os.getenv('YT_API_KEY')
+#  df=pd.read_excel(input_file_path)
 # channel_name = 'channelname'
 # max_vids = 10
 
