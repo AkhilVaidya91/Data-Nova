@@ -1,6 +1,6 @@
 import streamlit as st
 import os
-from modules import instagram, amazon_reviews, tripadvisor, booking, google_news, youtube, twitter
+from modules import instagram, amazon_reviews, tripadvisor, booking, google_news, youtube, twitter, flickr
 import zipfile
 import io
 
@@ -17,7 +17,7 @@ def main():
     st.title("Data Nova")
     st.subheader("Transforming Big Data into Strategic Insights")
 
-    platform = st.selectbox("Platform Selection", ["Instagram", "YouTube", "Twitter", "Amazon Product Reviews", "TripAdvisor reviews", "Booking.com reviews", "Google News"])
+    platform = st.selectbox("Platform Selection", ["Instagram", "YouTube", "Twitter", "Amazon Product Reviews", "TripAdvisor reviews", "Booking.com reviews", "Google News", "Flickr"])
 
     if platform == "Instagram":        
         account_handles = []
@@ -191,6 +191,22 @@ def main():
                     label="Download Data",
                     data=f,
                     file_name=filename,
+                    mime="application/xlsx"
+                )
+    elif platform == "Flickr":
+        query = st.text_input("Enter the query: ")
+        query = [query]
+        max_posts = st.number_input("Max Posts", min_value=1, value=5)
+        if st.button("Analyze"):
+            df, flickr_file_name = flickr.run(apify_api_key, gemini_api_key, query, max_posts, op_path)
+            st.write("Flickr details.")
+            st.dataframe(df)
+            flickr_file_name = os.path.join(op_path, flickr_file_name)
+            with open(flickr_file_name, "rb") as f:
+                st.download_button(
+                    label="Download Data",
+                    data=f,
+                    file_name=flickr_file_name,
                     mime="application/xlsx"
                 )
 
