@@ -17,7 +17,15 @@ def main():
     st.title("Data Nova")
     st.subheader("Transforming Big Data into Strategic Insights")
 
-    platform = st.selectbox("Platform Selection", ["Instagram", "YouTube", "Twitter", "Amazon Product Reviews", "TripAdvisor reviews", "Booking.com reviews", "Google News", "Flickr"])
+    category = st.selectbox("Select Category", ["Social Media", "e-WOM", "News"])
+
+    if category == "Social Media":
+        platform = st.selectbox("Platform Selection", ["Instagram", "YouTube", "Twitter", "Flickr"])
+    elif category == "e-WOM":
+        platform = st.selectbox("Platform Selection", ["Amazon Product Reviews", "TripAdvisor reviews", "Booking.com reviews"])
+    elif category == "News":
+        platform = st.selectbox("Platform Selection", ["Google News"])
+
 
     if platform == "Instagram":        
         account_handles = []
