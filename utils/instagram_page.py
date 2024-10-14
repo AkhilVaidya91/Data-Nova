@@ -12,7 +12,7 @@ def instagram_page_loader(gemini_api_key, apify_api_key, op_path):
     time_frame = st.selectbox("Time Frame Selection (months)", [6, 12, 24])
     
     max_posts = st.number_input("Max Posts Per Month", min_value=1, value=5)
-    filter_by_hashtags = st.radio("Filter by Hashtags", ["Yes", "No"])
+    filter_by_hashtags = st.radio("Filter by Hashtags", ["No", "Yes"])
 
     if filter_by_hashtags == "Yes":
         num_hashtags = st.number_input("Number of hashtags", min_value=1, value=1)
