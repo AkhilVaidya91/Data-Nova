@@ -23,7 +23,12 @@ def main():
     if category == "Social Media":
         platform = st.selectbox("Platform Selection", ["Instagram", "YouTube", "Twitter", "Flickr"])
     elif category == "e-WOM":
-        platform = st.selectbox("Platform Selection", ["Amazon Product Reviews", "TripAdvisor reviews", "Booking.com reviews"])
+        category = st.selectbox("Select e-WOM Category", ["Product reviews", "Travel/Booking aggregators"])
+        if category == "Product reviews":
+            platform = st.selectbox("Platform Selection", ["Amazon Product Reviews"])
+        elif category == "Travel/Booking aggregators":
+            platform = st.selectbox("Platform Selection", ["TripAdvisor reviews", "Booking.com reviews"])
+        # platform = st.selectbox("Platform Selection", ["Amazon Product Reviews", "TripAdvisor reviews", "Booking.com reviews"])
     elif category == "News":
         platform = st.selectbox("Platform Selection", ["Google News"])
 
