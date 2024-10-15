@@ -7,7 +7,7 @@ from modules.scrape import (
 )
 from modules.parse import parse_with_gemini
 import pandas as pd
-import markdown
+# import markdown
 from io import StringIO
 from modules import parse, scrape
 
