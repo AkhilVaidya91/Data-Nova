@@ -8,6 +8,7 @@ google-api-python-client
 youtube-transcript-api
 langchain 
 langchain_ollama
+langchain-google-genai
 selenium
 beautifulsoup4
 lxml 
