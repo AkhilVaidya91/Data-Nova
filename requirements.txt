@@ -6,3 +6,10 @@ apify-client
 openpyxl
 google-api-python-client
 youtube-transcript-api
+langchain 
+langchain_ollama
+selenium
+beautifulsoup4
+lxml 
+html5lib
+python-dotenv

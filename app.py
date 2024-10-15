@@ -1,7 +1,7 @@
 import streamlit as st
 import os
 from modules import instagram, amazon_reviews, tripadvisor, booking, google_news, youtube, twitter, flickr
-from utils import instagram_page
+from utils import instagram_page, website_page
 import zipfile
 import io
 
@@ -18,19 +18,20 @@ def main():
     st.title("Data Nova")
     st.subheader("Transforming Big Data into Strategic Insights")
 
-    category = st.selectbox("Select Category", ["Social Media", "e-WOM", "News"])
+    category = st.selectbox("Select Category", ["Social Media", "e-WOM", "News", "Website"])
 
     if category == "Social Media":
-        platform = st.selectbox("Platform Selection", ["Instagram", "YouTube", "Twitter", "Flickr"])
+        platform = st.selectbox("Platform Selection", ["Instagram", "YouTube", "Twitter", "Flickr", "Facebook"])
     elif category == "e-WOM":
-        category = st.selectbox("Select e-WOM Category", ["Product reviews", "Travel/Booking aggregators"])
-        if category == "Product reviews":
-            platform = st.selectbox("Platform Selection", ["Amazon Product Reviews"])
+        category = st.selectbox("Select e-WOM Category", ["e-Commerce Product reviews", "Travel/Booking aggregators"])
+        if category == "e-Commerce Product reviews":
+            platform = st.selectbox("Platform Selection", ["Amazon Product Reviews", "Google Reviews"])
         elif category == "Travel/Booking aggregators":
             platform = st.selectbox("Platform Selection", ["TripAdvisor reviews", "Booking.com reviews"])
-        # platform = st.selectbox("Platform Selection", ["Amazon Product Reviews", "TripAdvisor reviews", "Booking.com reviews"])
     elif category == "News":
         platform = st.selectbox("Platform Selection", ["Google News"])
+    elif category == "Website":
+        platform = st.selectbox("Platform Selection", ["Scrape website with AI"])
 
 
     if platform == "Instagram":        
@@ -180,6 +181,8 @@ def main():
                     file_name=flickr_file_name,
                     mime="application/xlsx"
                 )
+    elif platform == "Scrape website with AI":
+        website_page.website_page_loader()
 
 if __name__ == "__main__":
     main()
