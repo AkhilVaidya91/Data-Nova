@@ -1,7 +1,7 @@
 import streamlit as st
 import os
 from modules import instagram, amazon_reviews, tripadvisor, booking, google_news, youtube, twitter, flickr
-from utils import instagram_page, website_page
+from utils import instagram_page, website_page, facebook_page
 import zipfile
 import io
 
@@ -183,6 +183,8 @@ def main():
                 )
     elif platform == "Scrape website with AI":
         website_page.website_page_loader()
+    elif platform == "Facebook":
+        facebook_page.facebook_page_loader(gemini_api_key, apify_api_key, op_path)
 
 if __name__ == "__main__":
     main()
