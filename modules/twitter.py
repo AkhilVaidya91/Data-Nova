@@ -5,39 +5,45 @@ import requests
 import tempfile
 import os
 import google.generativeai as genai
+from datetime import datetime, timedelta
 
 # Function to get a caption for an image using the GenAI model
-def get_post_text(image_url, api_key, save_directory):
+def get_post_text(post_url, api_key):
     genai.configure(api_key=api_key)
-    
-    # Download the image from the URL
-    response = requests.get(image_url)
+    response = requests.get(post_url)
     image_data = response.content
 
-    # Write the image to a temporary file
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg", dir=save_directory) as temp_file:
-        temp_file.write(image_data)
-        temp_file_path = temp_file.name
+    # Create a unique temporary file for each request
+    temp_dir = tempfile.mkdtemp()
+    temp_file_path = os.path.join(temp_dir, f"temp_{os.getpid()}_{datetime.now().strftime('%Y%m%d%H%M%S%f')}.jpg")
 
     try:
-        # Upload the image and get a caption
+        with open(temp_file_path, 'wb') as temp_file:
+            temp_file.write(image_data)
+        
         myfile = genai.upload_file(temp_file_path)
         model = genai.GenerativeModel("gemini-1.5-flash")
         result = model.generate_content(
-            [myfile, "\n\n", "Write a caption for this image. Make sure the caption is descriptive and perfectly describes what the image conveys."],
+            [myfile, "\n\n", "Write a caption for this image. make sure that the caption is descriptive and perfectly describes whatever the image is trying to convey to the viewer."],
             safety_settings=[
-                {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
-                {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-                {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-                {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"}
-            ]
-        )
-        
-        # Return the caption text
+            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"}
+        ])
         return result.text
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None
+
     finally:
-        # Ensure the temporary file is deleted
-        os.unlink(temp_file_path)
+        # Clean up both the file and the temporary directory
+        try:
+            os.unlink(temp_file_path)
+            os.rmdir(temp_dir)
+        except OSError:
+            pass
 
 # Main function that accepts all inputs, including API keys
 def run(apify_api_token, genai_api_key, company_name, num_accounts, accounts, num_queries, search_queries, since, until, tweets_desired, save_directory):

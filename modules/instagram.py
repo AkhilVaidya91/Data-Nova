@@ -13,6 +13,14 @@ from dateutil.relativedelta import relativedelta
 
 ####################### FUNCTION DEFINITIONS #######################
 
+"""
+apify api key
+gemini api key
+start date (today)
+end date (claculate from dropdown)
+max_posts (calc)
+"""
+
 def remove_comma(text):
     text =  text.replace(",", " ")
     return str(text)
@@ -43,33 +51,65 @@ def setup_profile(api_key):
 
 def num_months_to_posts(n):
     if n < 7:
-        return 70
-    elif n < 12:
-        return 120
+        return 90
+    elif n < 13:
+        return 200
     else:
-        return 500
+        return 1500
 
+def calculate_previous_date(months_delta):
 
-def calculate_previous_date(day, month, year, months_delta):
-    # Create the initial date
-    initial_date = datetime(year, month, day)
-    
+    ## initial date is today's date
+
+    initial_date = datetime.today().date()
+
     # Calculate the new date by subtracting months_delta months
     new_date = initial_date - relativedelta(months=months_delta)
     
     # Return the new date as (year, month, day)
-    return new_date.date()
+    return new_date
+
+# def get_post_text(post_url, api_key):
+#     genai.configure(api_key=api_key)
+#     response = requests.get(post_url)
+#     image_data = response.content
+
+#     with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
+#         temp_file.write(image_data)
+#         temp_file_path = temp_file.name
+
+#     try:
+#         myfile = genai.upload_file(temp_file_path)
+#         model = genai.GenerativeModel("gemini-1.5-flash")
+#         result = model.generate_content(
+#             [myfile, "\n\n", "Write a caption for this image. make sure that the caption is descriptive and perfectly describes whatever the image is trying to convey to the viewer."],
+#             safety_settings=[
+#             {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+#             {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+#             {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+#             {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"}
+#         ])
+#         os.unlink(temp_file_path)
+#         return result.text
+    
+    # except Exception as e:
+    #     os.unlink(temp_file_path)
+    #     print(f"An error occurred: {e}")
+    #     return None
 
 def get_post_text(post_url, api_key):
     genai.configure(api_key=api_key)
     response = requests.get(post_url)
     image_data = response.content
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
-        temp_file.write(image_data)
-        temp_file_path = temp_file.name
+    # Create a unique temporary file for each request
+    temp_dir = tempfile.mkdtemp()
+    temp_file_path = os.path.join(temp_dir, f"temp_{os.getpid()}_{datetime.now().strftime('%Y%m%d%H%M%S%f')}.jpg")
 
     try:
+        with open(temp_file_path, 'wb') as temp_file:
+            temp_file.write(image_data)
+        
         myfile = genai.upload_file(temp_file_path)
         model = genai.GenerativeModel("gemini-1.5-flash")
         result = model.generate_content(
@@ -80,13 +120,19 @@ def get_post_text(post_url, api_key):
             {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
             {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"}
         ])
-        os.unlink(temp_file_path)
         return result.text
-    
+
     except Exception as e:
-        os.unlink(temp_file_path)
         print(f"An error occurred: {e}")
         return None
+
+    finally:
+        # Clean up both the file and the temporary directory
+        try:
+            os.unlink(temp_file_path)
+            os.rmdir(temp_dir)
+        except OSError:
+            pass
     
 def limit_posts_per_month(posts, max_posts_per_month):
     """
@@ -127,14 +173,17 @@ def run(gemini_api_key, api_key, insta_ids, flag, max_posts, day, month, year, n
     year = int(today_year)
     flag = "b"
     if flag == "b":
-        month_cutoff = calculate_previous_date(day, month, year, num_month)
+        month_cutoff = calculate_previous_date(num_month)
+        month_cutoff_string = month_cutoff.strftime("%Y-%m-%d")
         num_post = num_months_to_posts(num_month)
     elif flag == "a":
-        month_cutoff = calculate_previous_date(day, month, year, 1000)
+        month_cutoff = calculate_previous_date(1000)
         num_post = max_posts
     else:
         print("Invalid flag")
         return
+    
+    # end_date_string = calculate_previous_date
     list_of_account_dataframes = []
     list_of_posts_dataframes = []
 
@@ -184,6 +233,7 @@ def run(gemini_api_key, api_key, insta_ids, flag, max_posts, day, month, year, n
         "resultsLimit": num_post,
         "searchType": "hashtag",
         "searchLimit": 1,
+        "onlyPostsNewerThan": month_cutoff_string
         }
         run = client.actor("apify/instagram-scraper").call(run_input=run_input)
         all_posts = list(client.dataset(run["defaultDatasetId"]).iterate_items())
@@ -221,8 +271,8 @@ def run(gemini_api_key, api_key, insta_ids, flag, max_posts, day, month, year, n
             month = int(date.month)
             year = int(date.year)
 
-            if date < month_cutoff:
-                break
+            # if date < month_cutoff:
+            #     break
             
             hashtag_found = False
             if search_hashtags is not None:

@@ -26,11 +26,14 @@ def get_post_text(post_url, api_key):
     response = requests.get(post_url)
     image_data = response.content
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
-        temp_file.write(image_data)
-        temp_file_path = temp_file.name
+    # Create a unique temporary file for each request
+    temp_dir = tempfile.mkdtemp()
+    temp_file_path = os.path.join(temp_dir, f"temp_{os.getpid()}_{datetime.now().strftime('%Y%m%d%H%M%S%f')}.jpg")
 
     try:
+        with open(temp_file_path, 'wb') as temp_file:
+            temp_file.write(image_data)
+        
         myfile = genai.upload_file(temp_file_path)
         model = genai.GenerativeModel("gemini-1.5-flash")
         result = model.generate_content(
@@ -41,12 +44,19 @@ def get_post_text(post_url, api_key):
             {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
             {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"}
         ])
-        os.unlink(temp_file_path)
         return result.text
+
     except Exception as e:
-        os.unlink(temp_file_path)
         print(f"An error occurred: {e}")
         return None
+
+    finally:
+        # Clean up both the file and the temporary directory
+        try:
+            os.unlink(temp_file_path)
+            os.rmdir(temp_dir)
+        except OSError:
+            pass
 
 def setup(api_key):
     client = ApifyClient(api_key)

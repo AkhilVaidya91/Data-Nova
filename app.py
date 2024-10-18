@@ -1,22 +1,77 @@
 import streamlit as st
 import os
-# from modules import instagram, amazon_reviews, tripadvisor, booking, google_news, youtube, twitter, flickr
+import sqlite3
+import hashlib
 from utils import instagram_page, tripadvisor_page, website_page, facebook_page, amazon_page, booking_page, google_news_page, youtube_page, twitter_page, flickr_page
-# import zipfile
-# import io
 
-gemini_api_key = os.getenv('GEMINI_API_KEY')
-apify_api_key = os.getenv('APIFY_API_KEY')
-op_path = os.getenv('OP_PATH')
+# SQLite setup
+conn = sqlite3.connect('users.db', check_same_thread=False)
+c = conn.cursor()
 
-if not os.path.exists(op_path):
-    os.makedirs(op_path)
+# Create users table
+c.execute('''CREATE TABLE IF NOT EXISTS users
+             (username TEXT PRIMARY KEY, password TEXT)''')
+conn.commit()
 
-def main():
-    st.set_page_config(page_title="Data Nova", page_icon="📊")
+# Helper functions
+def make_hashes(password):
+    return hashlib.sha256(str.encode(password)).hexdigest()
 
+def check_hashes(password, hashed_text):
+    if make_hashes(password) == hashed_text:
+        return hashed_text
+    return False
+
+def add_userdata(username, password):
+    c.execute('INSERT INTO users(username,password) VALUES (?,?)', (username, make_hashes(password)))
+    conn.commit()
+
+def login_user(username, password):
+    c.execute('SELECT * FROM users WHERE username =? AND password = ?', (username, make_hashes(password)))
+    data = c.fetchall()
+    return data
+
+def view_all_users():
+    c.execute('SELECT * FROM users')
+    data = c.fetchall()
+    return data
+
+# Login/Signup sidebar
+def sidebar_login_signup():
+    st.sidebar.title("Login/Signup")
+    menu = ["Login", "SignUp"]
+    choice = st.sidebar.selectbox("Menu", menu)
+
+    if choice == "Login":
+        username = st.sidebar.text_input("User Name")
+        password = st.sidebar.text_input("Password", type='password')
+        if st.sidebar.button("Login"):
+            result = login_user(username, password)
+            if result:
+                st.sidebar.success(f"Logged In as {username}")
+                st.session_state.logged_in = True
+                st.session_state.username = username
+            else:
+                st.sidebar.warning("Incorrect Username/Password")
+
+    elif choice == "SignUp":
+        new_user = st.sidebar.text_input("Username")
+        new_password = st.sidebar.text_input("Password", type='password')
+        if st.sidebar.button("Signup"):
+            add_userdata(new_user, new_password)
+            st.sidebar.success("You have successfully created an account")
+            st.sidebar.info("Go to Login Menu to login")
+
+def main_app():
     st.title("Data Nova")
     st.subheader("Transforming Big Data into Strategic Insights")
+
+    gemini_api_key = os.getenv('GEMINI_API_KEY')
+    apify_api_key = os.getenv('APIFY_API_KEY')
+    op_path = os.getenv('OP_PATH')
+
+    if not os.path.exists(op_path):
+        os.makedirs(op_path)
 
     category = st.selectbox("Select Category", ["Social Media", "e-WOM", "News", "Website"])
 
@@ -33,13 +88,11 @@ def main():
     elif category == "Website":
         platform = st.selectbox("Platform Selection", ["Scrape website with AI"])
 
-
-    if platform == "Instagram":        
+    if platform == "Instagram":
         instagram_page.instagram_page_loader(gemini_api_key, apify_api_key, op_path)
-    
     elif platform == "TripAdvisor reviews":
         tripadvisor_page.tripadvisor_page_loader(gemini_api_key, apify_api_key, op_path)
-
+    # ... (rest of the platform conditions)
     elif platform == "Amazon Product Reviews":
         amazon_page.amazon_page_loader(apify_api_key, op_path)
 
@@ -63,6 +116,19 @@ def main():
 
     elif platform == "Facebook":
         facebook_page.facebook_page_loader(gemini_api_key, apify_api_key, op_path)
+
+def main():
+    st.set_page_config(page_title="Data Nova", page_icon="📊")
+    
+    if 'logged_in' not in st.session_state:
+        st.session_state.logged_in = False
+
+    sidebar_login_signup()
+
+    if st.session_state.logged_in:
+        main_app()
+    else:
+        st.warning("Please log in to access the application.")
 
 if __name__ == "__main__":
     main()
