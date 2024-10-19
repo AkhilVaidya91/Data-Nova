@@ -96,6 +96,8 @@ def run(gemini_api_key, api_key, links, max_posts, output_folder_path):
             loc = user.get("userLocation")
             if loc is not None:
                 loc_name = loc.get("name")
+            else:
+                loc_name = 'No user location'
 
             reviews = contributions.get("reviews")
             cities = contributions.get("reviewCityCount")
