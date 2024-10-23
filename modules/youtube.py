@@ -13,7 +13,6 @@ from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound, Tran
 
 api_key = os.getenv('YT_API_KEY')
 
-
 def get_channel_id(channel_name):
     url = f"https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q={channel_name}&key={api_key}"
     
@@ -195,7 +194,7 @@ def scrape_channel_videos_to_excel(channel_id, channel_name,max_vids,max_comment
     
     # Create the Excel file to write video data
     file_name = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{channel_name}_videos.xlsx"
-    excel_filename = f"{output_folder_path}/{channel_name}_videos.xlsx"
+    excel_filename = f"{output_folder_path}/{file_name}"
     df.to_excel(excel_filename, index=False)
     return df, file_name
 
