@@ -64,20 +64,70 @@ def setup(api_key):
     ws = wb.active
     ws.title = "Google News Articles"
 
-    headers = ["Platform", "Title", "Link", "Published Source", "Year", "Month", "Date", "Image Caption"]
+    headers = ["Platform", "Title", "Link", "Published Source", "Year", "Month", "Date", "Image Caption", "Content"]
 
     for col, header in enumerate(headers, start=1):
         ws.cell(row=1, column=col, value=header)
 
     return client, ws, wb
 
+def extract_article_content(url, perplexity_api_key, max_tokens=500):
 
-def run(api_key, gemini_api_key, query, max_articles, start_date, end_date, output_folder_path):
+    headers = {
+        "Accept": "application/json",
+        "Authorization": f"Bearer {perplexity_api_key}",
+        "Content-Type": "application/json"
+    }
+    
+    api_url = "https://api.perplexity.ai/chat/completions"
+    
+    payload = {
+        "model": "llama-3.1-sonar-small-128k-online",
+        "messages": [
+            {
+                "role": "system",
+                "content": "You are a helpful assistant that extracts and summarizes news article content."
+            },
+            {
+                "role": "user",
+                "content": f"Visit this news article URL: {url} and extract its main content. Provide only the article's text content, excluding any advertisements, navigation elements, or formatting. If you cannot access the URL, please indicate that clearly. Return only a simple string of text rather than a markdown"
+            }
+        ],
+        "temperature": 0.1,
+        "max_tokens": max_tokens,
+        "stream": False
+    }
+    
+    try:
+        response = requests.post(api_url, json=payload, headers=headers)
+        
+        if response.status_code != 200:
+            print(f"Error {response.status_code}: {response.text}")
+            return None
+            
+        content = response.json()
+        
+        if 'choices' in content and len(content['choices']) > 0:
+            extracted_text = content['choices'][0]['message']['content']
+            return extracted_text
+        else:
+            print(f"Unexpected response format: {content}")
+            return None
+            
+    except requests.exceptions.RequestException as e:
+        print(f"Request error for {url}: {str(e)}")
+        return None
+    except Exception as e:
+        print(f"Unexpected error processing {url}: {str(e)}")
+        return None
+
+
+def run(api_key, gemini_api_key, perplexity_api_key, query, max_articles, start_date, end_date, output_folder_path):
     
     output_folder_path = r"{}".format(output_folder_path)
 
     row = 2
-    df = pd.DataFrame(columns=["Platform", "Title", "Link", "Published Source", "Year", "Month", "Date", "Image Caption"])
+    df = pd.DataFrame(columns=["Platform", "Title", "Link", "Published Source", "Year", "Month", "Date", "Image Caption", "Content"])
     client, ws, wb = setup(api_key)
     run_input = {
         "query": str(query),
@@ -108,6 +158,10 @@ def run(api_key, gemini_api_key, query, max_articles, start_date, end_date, outp
         image_link = item.get("image")
 
         image_caption = get_post_text(image_link, gemini_api_key)   #
+        image_caption = remove_comma(image_caption)
+
+        description = extract_article_content(link, perplexity_api_key)
+        description = remove_comma(description) #
         
 
         ws.cell(row=row, column=1, value='Google News')
@@ -118,8 +172,9 @@ def run(api_key, gemini_api_key, query, max_articles, start_date, end_date, outp
         ws.cell(row=row, column=6, value=int(published_month))
         ws.cell(row=row, column=7, value=int(published_day))
         ws.cell(row=row, column=8, value=str(image_caption))
+        ws.cell(row=row, column=9, value=str(description))
 
-        row_values = ('Google News', str(title), str(link), str(source), int(published_year), int(published_month), int(published_day), str(image_caption))
+        row_values = ('Google News', str(title), str(link), str(source), int(published_year), int(published_month), int(published_day), str(image_caption), str(description))
         df.loc[len(df)] = row_values
         row += 1
     excel_filename = f"google_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{query}_news.xlsx"

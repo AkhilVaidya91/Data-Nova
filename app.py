@@ -36,6 +36,29 @@ def view_all_users():
     data = c.fetchall()
     return data
 
+def welcome_screen():
+    st.title("Digital Nova")
+    st.subheader("Your GenAI-based research companion")
+    
+    st.markdown("""
+    ### Welcome to Digital Nova! 👋
+    
+    Digital Nova is your all-in-one research companion powered by advanced AI technology. Our platform helps you gather, analyze, and understand data from various sources across the internet.
+    
+    #### What we offer:
+    
+    🔍 **Multi-Platform Data Collection**
+    - Social Media (Instagram, YouTube, Twitter, Flickr, Facebook)
+    - Customer Reviews (Amazon, TripAdvisor, Booking.com)
+    - News Articles (Google News)
+    - Custom Website Scraping
+    
+    #### Get Started
+    Please login or create an account using the sidebar to access these powerful features and begin your research journey!
+    
+    ---
+    """)
+
 # Login/Signup sidebar
 def sidebar_login_signup():
     st.sidebar.title("Login/Signup")
@@ -63,11 +86,12 @@ def sidebar_login_signup():
             st.sidebar.info("Go to Login Menu to login")
 
 def main_app():
-    st.title("Data Nova")
-    st.subheader("Transforming Big Data into Strategic Insights")
+    st.title("Digital Nova")
+    st.subheader("Your GenAI-based research companion")
 
     gemini_api_key = os.getenv('GEMINI_API_KEY')
     apify_api_key = os.getenv('APIFY_API_KEY')
+    perplexity_api_key = os.getenv('PERPLEXITY_API_KEY')
     op_path = os.getenv('OP_PATH')
 
     if not os.path.exists(op_path):
@@ -92,7 +116,7 @@ def main_app():
         instagram_page.instagram_page_loader(gemini_api_key, apify_api_key, op_path)
     elif platform == "TripAdvisor reviews":
         tripadvisor_page.tripadvisor_page_loader(gemini_api_key, apify_api_key, op_path)
-    # ... (rest of the platform conditions)
+
     elif platform == "Amazon Product Reviews":
         amazon_page.amazon_page_loader(apify_api_key, op_path)
 
@@ -100,7 +124,7 @@ def main_app():
         booking_page.booking_page_loader(apify_api_key, op_path)
 
     elif platform == "Google News":
-        google_news_page.google_news_page_loader(apify_api_key, gemini_api_key, op_path)
+        google_news_page.google_news_page_loader(apify_api_key, gemini_api_key, perplexity_api_key, op_path)
 
     elif platform == "YouTube":
         youtube_page.youtube_page_loader(op_path)
@@ -118,7 +142,7 @@ def main_app():
         facebook_page.facebook_page_loader(gemini_api_key, apify_api_key, op_path)
 
 def main():
-    st.set_page_config(page_title="Data Nova", page_icon="📊")
+    st.set_page_config(page_title="Digital Nova", page_icon="📊")
     
     if 'logged_in' not in st.session_state:
         st.session_state.logged_in = False
@@ -128,7 +152,7 @@ def main():
     if st.session_state.logged_in:
         main_app()
     else:
-        st.warning("Please log in to access the application.")
+        welcome_screen()
 
 if __name__ == "__main__":
     main()
