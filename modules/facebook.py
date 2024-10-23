@@ -132,7 +132,7 @@ def run(gemini_api_key, api_key, facebook_url, start_date, end_date, max_posts, 
         row += 1
         row_data = (str(categories_str), str(info_str), int(likes), int(num_posts), str(title), str(address), str(pageName), str(page_url), str(phone))
         account_df.loc[len(account_df)] = row_data
-    excel_filename = f"facebook_{pageName}_profile.xlsx"
+    excel_filename = f"facebook_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{pageName}_profile.xlsx"
     save_path = f"{output_folder_path}/{excel_filename}"
     profile_wb.save(save_path)
                     
@@ -205,6 +205,9 @@ def run(gemini_api_key, api_key, facebook_url, start_date, end_date, max_posts, 
         row += 1
 
     excel_filename_2 = f"facebook_{pageName}_posts.xlsx"
+    ## excel filename contains timestamp
+    
+    excel_filename_2 = f"facebook_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{pageName}_posts.xlsx"
     save_path = f"{output_folder_path}/{excel_filename_2}"
     wb.save(save_path)
     

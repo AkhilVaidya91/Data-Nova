@@ -149,7 +149,7 @@ def run(gemini_api_key, api_key, links, max_posts, output_folder_path):
             row_data = ("TripAdvisor", int(year), int(month), str(platform), str(rating), str(helpful_votes), str(text), str(loc_name), str(reviews), str(cities), str(helpful_contributions), str(captions), str(place_name), str(place_location), str(place_address), str(city), str(state), str(country))
             df.loc[row] = row_data
             row += 1
-        excel_filename = f"tripadvisor_{place_name}_reviews.xlsx"
+        excel_filename = f"tripadvisor_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{place_name}_reviews.xlsx"
         save_path = f"{output_folder_path}/{excel_filename}"
         wb.save(save_path)
     return df, excel_filename

@@ -69,34 +69,6 @@ def calculate_previous_date(months_delta):
     # Return the new date as (year, month, day)
     return new_date
 
-# def get_post_text(post_url, api_key):
-#     genai.configure(api_key=api_key)
-#     response = requests.get(post_url)
-#     image_data = response.content
-
-#     with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
-#         temp_file.write(image_data)
-#         temp_file_path = temp_file.name
-
-#     try:
-#         myfile = genai.upload_file(temp_file_path)
-#         model = genai.GenerativeModel("gemini-1.5-flash")
-#         result = model.generate_content(
-#             [myfile, "\n\n", "Write a caption for this image. make sure that the caption is descriptive and perfectly describes whatever the image is trying to convey to the viewer."],
-#             safety_settings=[
-#             {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
-#             {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-#             {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-#             {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"}
-#         ])
-#         os.unlink(temp_file_path)
-#         return result.text
-    
-    # except Exception as e:
-    #     os.unlink(temp_file_path)
-    #     print(f"An error occurred: {e}")
-    #     return None
-
 def get_post_text(post_url, api_key):
     genai.configure(api_key=api_key)
     response = requests.get(post_url)
@@ -219,7 +191,7 @@ def run(gemini_api_key, api_key, insta_ids, flag, max_posts, day, month, year, n
             row += 1
             row_data = (str(user_name), str(full_name), str(bio), int(followers), int(following), int(n_reels), int(posts), )
             account_df.loc[len(account_df)] = row_data
-        excel_filename = f"instagram_{account}_profile.xlsx"
+        excel_filename = f"instagram_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{account}_profile.xlsx"
         save_path = f"{output_folder_path}/{excel_filename}"
         profile_wb.save(save_path)
                         
@@ -314,7 +286,7 @@ def run(gemini_api_key, api_key, insta_ids, flag, max_posts, day, month, year, n
 
         list_of_posts_dataframes.append(posts_df)
         list_of_account_dataframes.append(account_df)
-        excel_filename_2 = f"instagram_{account}_posts.xlsx"
+        excel_filename_2 = f"instagram_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{account}_posts.xlsx"
         save_path = f"{output_folder_path}/{excel_filename_2}"
         wb.save(save_path)
     

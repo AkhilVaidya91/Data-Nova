@@ -8,6 +8,7 @@ from PIL import Image as PilImage
 from openpyxl.drawing.image import Image
 import tempfile
 import google.generativeai as genai
+from datetime import datetime
 from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound, TranscriptsDisabled, VideoUnavailable
 
 api_key = os.getenv('YT_API_KEY')
@@ -137,9 +138,6 @@ def get_video_details(video_ids,max_comments):
                     # 'Thumbnail': video['snippet']['thumbnails']['high']['url']
                 }
                 
-                # Get top 5 comments for the video
-                # comments = get_video_comments(video['id'],max_comments)
-                # video_info['Top Comments'] = comments
                 
                 transcript_info = get_available_transcript(video['id'])
                 video_info['Transcript'] = transcript_info['text']
@@ -196,38 +194,10 @@ def scrape_channel_videos_to_excel(channel_id, channel_name,max_vids,max_comment
     df = pd.DataFrame(video_details)
     
     # Create the Excel file to write video data
-    file_name = f"{channel_name}_videos.xlsx"
+    file_name = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{channel_name}_videos.xlsx"
     excel_filename = f"{output_folder_path}/{channel_name}_videos.xlsx"
     df.to_excel(excel_filename, index=False)
     return df, file_name
-
-    # Load the Excel file and prepare for adding images
-    # wb = openpyxl.load_workbook(excel_filename)
-    # ws = wb.active
-
-    # # Create a folder for storing thumbnails if it doesn't exist
-    # if not os.path.exists("thumbnails"):
-    #     os.makedirs("thumbnails")
-
-    # # Add images and URLs to the Excel sheet
-    # for idx, video in enumerate(video_details, start=2):  # Start at row 2 since row 1 has headers
-    #     thumbnail_url = video['Thumbnail']
-    #     video_id = video['Video ID']
-        
-    #     # Download the thumbnail image
-    #     img_path = download_thumbnail_image(thumbnail_url, video_id)
-        
-    #     if img_path:
-    #         # Add image to Excel
-    #         img = Image(img_path)
-    #         img.width = 100  # Set image width
-    #         img.height = 100  # Set image height
-    #         ws.add_image(img, f'M{idx}')  # M is the 13th column (after L which contains Thumbnail URL)
-        
-
-    # Save the modified Excel file with images
-    # wb.save(excel_filename)
-    # print(f"Data for channel {channel_name} saved to {excel_filename}")
 
 def get_channel_statistics(channel_id):
     url = f"https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id={channel_id}&key={api_key}"
@@ -268,18 +238,10 @@ def save_channel_statistics_to_excel(channel_id, output_folder_path):
         os.makedirs(output_folder_path)
 
     # Define the Excel file path
-    file_name = f"{channel_stats['Channel Name']}_statistics.xlsx"
+    file_name = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{channel_stats['Channel Name']}_statistics.xlsx"
     save_path = os.path.join(output_folder_path, file_name)
     
     # Save the data to an Excel file
     df.to_excel(save_path, index=False)
 
     return df, file_name
-
-
-# channel_id = get_channel_id(channel_name)
-# if channel_id:
-#     save_channel_statistics_to_excel(channel_id, output_folder_path)
-#     scrape_channel_videos_to_excel(channel_id, channel_name,max_vids,max_comments, output_folder_path)
-# else:
-#     print(f"Channel Name: {channel_name}, Channel ID not found.")

@@ -122,7 +122,7 @@ def run(apify_api_token, genai_api_key, company_name, num_accounts, accounts, nu
     df = pd.DataFrame(tweets_data)
 
     # Save the DataFrame to an Excel file in the specified directory
-    filename = f"{company_name}_twitter.xlsx"
+    filename = f"{company_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_twitter.xlsx"
     excel_filename = os.path.join(save_directory, f"{company_name}_twitter.xlsx")
     df.to_excel(excel_filename, index=False)
     

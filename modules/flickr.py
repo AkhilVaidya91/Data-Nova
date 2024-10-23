@@ -114,7 +114,7 @@ def run(apify_api_key, gemini_api_key, query, max_posts, output_folder_path):
                 row_values = ('Flickr', str(title), str(favs), str(comment_count), str(media_type), str(image_caption))
                 df.loc[len(df)] = row_values
                 row += 1
-        excel_filename = f"flickr_{link}_data.xlsx"
+        excel_filename = f"flickr_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{link}_data.xlsx"
         save_path = f"{output_folder_path}/{excel_filename}"
         wb.save(save_path)
     return df, excel_filename

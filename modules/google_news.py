@@ -122,7 +122,7 @@ def run(api_key, gemini_api_key, query, max_articles, start_date, end_date, outp
         row_values = ('Google News', str(title), str(link), str(source), int(published_year), int(published_month), int(published_day), str(image_caption))
         df.loc[len(df)] = row_values
         row += 1
-    excel_filename = f"google_{query}_news.xlsx"
+    excel_filename = f"google_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{query}_news.xlsx"
     save_path = f"{output_folder_path}/{excel_filename}"
     wb.save(save_path)
     return df, excel_filename

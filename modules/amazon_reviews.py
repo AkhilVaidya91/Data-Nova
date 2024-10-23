@@ -83,6 +83,8 @@ def run(api_key, product_urls, output_folder_path, max_reviews=100):
             row += 1
         
         excel_filename = f"amazon_{num}_reviews.xlsx"
+        ## filename also includes timestamp
+        excel_filename = f"{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}_{excel_filename}"
         save_path = f"{output_folder_path}/{excel_filename}"
         wb.save(save_path)
         num = num + 1

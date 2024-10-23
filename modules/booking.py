@@ -87,6 +87,8 @@ def run(api_key, links, max_posts, output_folder_path):
             row += 1
         random_number = random.randint(1, 100000)
         excel_filename = f"booking_{random_number}_reviews.xlsx"
+        ## filename also includes timestamp
+        excel_filename = f"booking_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{random_number}_reviews.xlsx"
         save_path = f"{output_folder_path}/{excel_filename}"
         wb.save(save_path)
     return df, excel_filename
