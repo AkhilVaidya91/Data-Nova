@@ -2,6 +2,7 @@ import streamlit as st
 import os
 import sqlite3
 import hashlib
+from modules import themes
 from utils import instagram_page, tripadvisor_page, website_page, facebook_page, amazon_page, booking_page, google_news_page, youtube_page, twitter_page, flickr_page
 
 # SQLite setup
@@ -52,7 +53,7 @@ def welcome_screen():
     - Customer Reviews (Amazon, TripAdvisor, Booking.com)
     - News Articles (Google News)
     - Custom Website Scraping
-    
+
     #### Get Started
     Please login or create an account using the sidebar to access these powerful features and begin your research journey!
     
@@ -147,7 +148,7 @@ def main_app():
     
     elif active_tab == "Theme Generation":
         st.session_state.active_tab = "Theme Generation"
-        st.write("Feature under development")
+        themes.themes_main()
 
     elif active_tab == "Analytics":
         st.session_state.active_tab = "Analytics"
