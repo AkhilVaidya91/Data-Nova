@@ -74,6 +74,7 @@ def sidebar_login_signup():
                 st.sidebar.success(f"Logged In as {username}")
                 st.session_state.logged_in = True
                 st.session_state.username = username
+                st.session_state.active_tab = "Data Scraping"
             else:
                 st.sidebar.warning("Incorrect Username/Password")
 
@@ -96,50 +97,62 @@ def main_app():
 
     if not os.path.exists(op_path):
         os.makedirs(op_path)
+    tabs = ["Data Scraping", "Theme Generation", "Analytics"]
+    active_tab = st.sidebar.radio("Select Tab", tabs, index=tabs.index(st.session_state.get('active_tab', "Data Scraping")))
+    if active_tab == "Data Scraping":
+        st.session_state.active_tab = "Data Scraping"
+        category = st.selectbox("Select Category", ["Social Media", "e-WOM", "News", "Website"])
 
-    category = st.selectbox("Select Category", ["Social Media", "e-WOM", "News", "Website"])
+        if category == "Social Media":
+            platform = st.selectbox("Platform Selection", ["Instagram", "YouTube", "Twitter", "Flickr", "Facebook"])
+        elif category == "e-WOM":
+            category = st.selectbox("Select e-WOM Category", ["e-Commerce Product reviews", "Travel/Booking aggregators"])
+            if category == "e-Commerce Product reviews":
+                platform = st.selectbox("Platform Selection", ["Amazon Product Reviews", "Google Reviews"])
+            elif category == "Travel/Booking aggregators":
+                platform = st.selectbox("Platform Selection", ["TripAdvisor reviews", "Booking.com reviews"])
+        elif category == "News":
+            platform = st.selectbox("Platform Selection", ["Google News"])
+        elif category == "Website":
+            platform = st.selectbox("Platform Selection", ["Scrape website with AI"])
 
-    if category == "Social Media":
-        platform = st.selectbox("Platform Selection", ["Instagram", "YouTube", "Twitter", "Flickr", "Facebook"])
-    elif category == "e-WOM":
-        category = st.selectbox("Select e-WOM Category", ["e-Commerce Product reviews", "Travel/Booking aggregators"])
-        if category == "e-Commerce Product reviews":
-            platform = st.selectbox("Platform Selection", ["Amazon Product Reviews", "Google Reviews"])
-        elif category == "Travel/Booking aggregators":
-            platform = st.selectbox("Platform Selection", ["TripAdvisor reviews", "Booking.com reviews"])
-    elif category == "News":
-        platform = st.selectbox("Platform Selection", ["Google News"])
-    elif category == "Website":
-        platform = st.selectbox("Platform Selection", ["Scrape website with AI"])
+        if platform == "Instagram":
+            instagram_page.instagram_page_loader(gemini_api_key, apify_api_key, op_path)
+        elif platform == "TripAdvisor reviews":
+            tripadvisor_page.tripadvisor_page_loader(gemini_api_key, apify_api_key, op_path)
 
-    if platform == "Instagram":
-        instagram_page.instagram_page_loader(gemini_api_key, apify_api_key, op_path)
-    elif platform == "TripAdvisor reviews":
-        tripadvisor_page.tripadvisor_page_loader(gemini_api_key, apify_api_key, op_path)
+        elif platform == "Amazon Product Reviews":
+            amazon_page.amazon_page_loader(apify_api_key, op_path)
 
-    elif platform == "Amazon Product Reviews":
-        amazon_page.amazon_page_loader(apify_api_key, op_path)
+        elif platform == "Booking.com reviews":
+            booking_page.booking_page_loader(apify_api_key, op_path)
 
-    elif platform == "Booking.com reviews":
-        booking_page.booking_page_loader(apify_api_key, op_path)
+        elif platform == "Google News":
+            google_news_page.google_news_page_loader(apify_api_key, gemini_api_key, perplexity_api_key, op_path)
 
-    elif platform == "Google News":
-        google_news_page.google_news_page_loader(apify_api_key, gemini_api_key, perplexity_api_key, op_path)
+        elif platform == "YouTube":
+            youtube_page.youtube_page_loader(op_path)
 
-    elif platform == "YouTube":
-        youtube_page.youtube_page_loader(op_path)
+        elif platform == "Twitter":
+            twitter_page.twitter_page_loader(gemini_api_key, apify_api_key, op_path)
 
-    elif platform == "Twitter":
-        twitter_page.twitter_page_loader(gemini_api_key, apify_api_key, op_path)
+        elif platform == "Flickr":
+            flickr_page.flickr_page_loader(gemini_api_key, apify_api_key, op_path)
 
-    elif platform == "Flickr":
-        flickr_page.flickr_page_loader(gemini_api_key, apify_api_key, op_path)
+        elif platform == "Scrape website with AI":
+            website_page.website_page_loader()
 
-    elif platform == "Scrape website with AI":
-        website_page.website_page_loader()
+        elif platform == "Facebook":
+            facebook_page.facebook_page_loader(gemini_api_key, apify_api_key, op_path)
+    
+    elif active_tab == "Theme Generation":
+        st.session_state.active_tab = "Theme Generation"
+        st.write("Feature under development")
 
-    elif platform == "Facebook":
-        facebook_page.facebook_page_loader(gemini_api_key, apify_api_key, op_path)
+    elif active_tab == "Analytics":
+        st.session_state.active_tab = "Analytics"
+        st.write("Feature under development")
+
 
 def main():
     st.set_page_config(page_title="Digital Nova", page_icon="📊")
