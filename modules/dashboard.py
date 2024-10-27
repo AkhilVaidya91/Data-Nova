@@ -24,13 +24,13 @@ def get_user_corpuses(username):
     return list(corpuses)
 
 def display_dashboard(username):
-    st.title("User Dashboard")
+    # st.title("User Dashboard")
 
     # Fetch user information
     user_info = get_user_info(username)
     if user_info:
-        st.subheader("User Information")
-        st.write(f"Username: {user_info['username']}")
+        st.subheader(f"User Information: {user_info['username']}")
+        # st.write(f"Username: {user_info['username']}")
     # Display table of all user's generated output files
     st.subheader("Generated Output Files")
     output_files = get_user_output_files(username)
