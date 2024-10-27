@@ -10,6 +10,7 @@ from openpyxl import Workbook
 from io import BytesIO
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
+from pymongo import MongoClient
 
 ####################### FUNCTION DEFINITIONS #######################
 
@@ -20,6 +21,11 @@ start date (today)
 end date (claculate from dropdown)
 max_posts (calc)
 """
+
+MONGO_URI = os.getenv('MONGO_URI')
+client = MongoClient(MONGO_URI)
+db = client['digital_nova']
+output_files_collection = db['output_files']
 
 def remove_comma(text):
     text =  text.replace(",", " ")
@@ -51,7 +57,7 @@ def setup_profile(api_key):
 
 def num_months_to_posts(n):
     if n < 7:
-        return 90
+        return 20
     elif n < 13:
         return 200
     else:
@@ -132,7 +138,7 @@ def limit_posts_per_month(posts, max_posts_per_month):
     
     return limited_posts
 
-def run(gemini_api_key, api_key, insta_ids, flag, max_posts, day, month, year, num_month, output_folder_path, search_hashtags=None):
+def run(gemini_api_key, api_key, insta_ids, flag, max_posts, day, month, year, num_month, output_folder_path, username, search_hashtags=None):
     
     output_folder_path = r"{}".format(output_folder_path)
     accounts = insta_ids
@@ -194,6 +200,14 @@ def run(gemini_api_key, api_key, insta_ids, flag, max_posts, day, month, year, n
         excel_filename = f"instagram_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{account}_profile.xlsx"
         save_path = f"{output_folder_path}/{excel_filename}"
         profile_wb.save(save_path)
+
+        output_files_collection.insert_one({
+            'username': username,
+            'file_type': 'Instagram',
+            'file_name': excel_filename,
+            'file_path': save_path,
+            'timestamp': datetime.now()
+        })
                         
         row = 2
          
@@ -289,5 +303,13 @@ def run(gemini_api_key, api_key, insta_ids, flag, max_posts, day, month, year, n
         excel_filename_2 = f"instagram_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{account}_posts.xlsx"
         save_path = f"{output_folder_path}/{excel_filename_2}"
         wb.save(save_path)
+
+        output_files_collection.insert_one({
+            'username': username,
+            'file_type': 'Instagram',
+            'file_name': excel_filename_2,
+            'file_path': save_path,
+            'timestamp': datetime.now()
+        })
     
     return list_of_account_dataframes, list_of_posts_dataframes, excel_filename, excel_filename_2

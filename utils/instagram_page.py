@@ -4,7 +4,7 @@ from modules import instagram
 import zipfile
 import io
 
-def instagram_page_loader(gemini_api_key, apify_api_key, op_path):
+def instagram_page_loader(gemini_api_key, apify_api_key, op_path, username):
     account_handles = []
     handle = st.text_input(f"Instagram account handle: ")
     account_handles.append(handle)
@@ -23,9 +23,9 @@ def instagram_page_loader(gemini_api_key, apify_api_key, op_path):
     
     if st.button("Analyze"):
         if filter_by_hashtags == "Yes":
-            list_of_account_dataframes, list_of_posts_dataframes, acc_file, post_file = instagram.run(gemini_api_key, apify_api_key, account_handles, "b", max_posts, 1, 1, 1, time_frame, op_path, hashtags)
+            list_of_account_dataframes, list_of_posts_dataframes, acc_file, post_file = instagram.run(gemini_api_key, apify_api_key, account_handles, "b", max_posts, 1, 1, 1, time_frame, op_path, username, hashtags)
         else:
-            list_of_account_dataframes, list_of_posts_dataframes, acc_file, post_file = instagram.run(gemini_api_key, apify_api_key, account_handles, "b", max_posts, 1, 1, 1, time_frame, op_path)
+            list_of_account_dataframes, list_of_posts_dataframes, acc_file, post_file = instagram.run(gemini_api_key, apify_api_key, account_handles, "b", max_posts, 1, 1, 1, time_frame, op_path, username)
         
         df = list_of_account_dataframes[0]
         df_posts = list_of_posts_dataframes[0]

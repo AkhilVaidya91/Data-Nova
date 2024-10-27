@@ -1,18 +1,17 @@
 import streamlit as st
 import os
-import sqlite3
+# import sqlite3
 import hashlib
-from modules import themes
+from pymongo import MongoClient
+from modules import themes, dashboard
 from utils import instagram_page, tripadvisor_page, website_page, facebook_page, amazon_page, booking_page, google_news_page, youtube_page, twitter_page, flickr_page
 
 # SQLite setup
-conn = sqlite3.connect('users.db', check_same_thread=False)
-c = conn.cursor()
+MONGO_URI = os.getenv('MONGO_URI')
 
-# Create users table
-c.execute('''CREATE TABLE IF NOT EXISTS users
-             (username TEXT PRIMARY KEY, password TEXT)''')
-conn.commit()
+client = MongoClient(MONGO_URI)
+db = client['digital_nova']
+users_collection = db['users']
 
 # Helper functions
 def make_hashes(password):
@@ -24,18 +23,17 @@ def check_hashes(password, hashed_text):
     return False
 
 def add_userdata(username, password):
-    c.execute('INSERT INTO users(username,password) VALUES (?,?)', (username, make_hashes(password)))
-    conn.commit()
+    hashed_password = make_hashes(password)
+    users_collection.insert_one({'username': username, 'password': hashed_password})
 
 def login_user(username, password):
-    c.execute('SELECT * FROM users WHERE username =? AND password = ?', (username, make_hashes(password)))
-    data = c.fetchall()
-    return data
+    hashed_password = make_hashes(password)
+    user = users_collection.find_one({'username': username, 'password': hashed_password})
+    return user
 
 def view_all_users():
-    c.execute('SELECT * FROM users')
-    data = c.fetchall()
-    return data
+    users = users_collection.find()
+    return list(users)
 
 def welcome_screen():
     st.title("Digital Nova")
@@ -98,7 +96,7 @@ def main_app():
 
     if not os.path.exists(op_path):
         os.makedirs(op_path)
-    tabs = ["Data Scraping", "Theme Generation", "Analytics"]
+    tabs = ["Data Scraping", "Theme Generation", "Analytics", "Dashboard"]
     active_tab = st.sidebar.radio("Select Tab", tabs, index=tabs.index(st.session_state.get('active_tab', "Data Scraping")))
     if active_tab == "Data Scraping":
         st.session_state.active_tab = "Data Scraping"
@@ -118,7 +116,7 @@ def main_app():
             platform = st.selectbox("Platform Selection", ["Scrape website with AI"])
 
         if platform == "Instagram":
-            instagram_page.instagram_page_loader(gemini_api_key, apify_api_key, op_path)
+            instagram_page.instagram_page_loader(gemini_api_key, apify_api_key, op_path, username=st.session_state.username)
         elif platform == "TripAdvisor reviews":
             tripadvisor_page.tripadvisor_page_loader(gemini_api_key, apify_api_key, op_path)
 
@@ -153,6 +151,10 @@ def main_app():
     elif active_tab == "Analytics":
         st.session_state.active_tab = "Analytics"
         st.write("Feature under development")
+
+    elif active_tab == "Dashboard":
+        st.session_state.active_tab = "Dashboard"
+        dashboard.dashboard()
 
 
 def main():
