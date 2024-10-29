@@ -16,3 +16,4 @@ html5lib
 python-dotenv
 openai
 pymongo
+llama-index
