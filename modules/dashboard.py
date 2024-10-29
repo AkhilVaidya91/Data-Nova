@@ -10,6 +10,7 @@ db = client['digital_nova']
 users_collection = db['users']
 output_files_collection = db['output_files']
 corpus_collection = db['corpus']
+themes_collection = db['themes']
 
 def get_user_info(username):
     user = users_collection.find_one({'username': username})
@@ -22,6 +23,10 @@ def get_user_output_files(username):
 def get_user_corpuses(username):
     corpuses = corpus_collection.find({'username': username})
     return list(corpuses)
+
+def get_user_themes(username):
+    themes = themes_collection.find({'username': username})
+    return list(themes)
 
 def display_dashboard(username):
     # st.title("User Dashboard")
@@ -59,6 +64,17 @@ def display_dashboard(username):
                     st.write(file)
     else:
         st.write("No corpuses found.")
+
+    ## Display the user generated themes
+
+    st.subheader("Generated Themes")
+    themes = get_user_themes(username)
+    if themes:
+        for theme in themes:
+            with st.expander(theme['theme_title']):
+                st.dataframe(theme['structured_data'])
+    else:
+        st.write("No themes found.")
 
 def dashboard():
     if 'username' in st.session_state:
