@@ -7,6 +7,7 @@ from modules import themes, dashboard
 from utils import instagram_page, tripadvisor_page, website_page, facebook_page, amazon_page, booking_page, google_news_page, youtube_page, twitter_page, flickr_page
 
 MONGO_URI = os.getenv('MONGO_URI')
+# MONGO_URI = "mongodb+srv://akhilvaidya22:qN2dxc1cpwD64TeI@digital-nova.cbbsn.mongodb.net/?retryWrites=true&w=majority&appName=digital-nova"
 
 
 client = MongoClient(MONGO_URI)
@@ -90,9 +91,17 @@ def main_app():
     st.subheader("Your GenAI-based research companion")
 
     gemini_api_key = os.getenv('GEMINI_API_KEY')
-    apify_api_key = os.getenv('APIFY_API_KEY')
-    perplexity_api_key = os.getenv('PERPLEXITY_API_KEY')
+    # apify_api_key = os.getenv('APIFY_API_KEY')
+    # perplexity_api_key = os.getenv('PERPLEXITY_API_KEY')
     op_path = os.getenv('OP_PATH')
+
+    user = st.session_state.username
+
+    apify_key = users_collection.find_one({'username': user}).get('api_keys', {}).get('apify', None)
+    perplexity_key = users_collection.find_one({'username': user}).get('api_keys', {}).get('perplexity', None)
+
+    apify_api_key = apify_key
+    perplexity_api_key = perplexity_key
 
     if not os.path.exists(op_path):
         os.makedirs(op_path)

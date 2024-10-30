@@ -12,6 +12,18 @@ from llama_index.embeddings.openai import OpenAIEmbedding
 from pymongo import MongoClient
 import numpy as np
 from numpy.linalg import norm
+import PyPDF2
+from io import BytesIO
+
+
+mongo_uri = os.getenv('MONGO_URI')
+database_name = 'digital_nova'
+client = MongoClient(mongo_uri)
+db = client[database_name]
+themes_collection = db['themes']
+corpus_collection = db['corpus']
+user = db['users']
+
 
 # Function to fetch data from Perplexity API
 def fetch_perplexity_data(api_key, topic):
@@ -187,6 +199,52 @@ def search_vectors(query_text, k, mongodb_uri, openai_api_key):
     finally:
         client.close()
 
+# Add this function before themes_main()
+def process_pdf_and_create_vectors(file_path, file_name, openai_api_key, chunk_size=1000):
+    """
+    Process a PDF file and create vectors for chunks of text
+    """
+    vectors_data = []
+    try:
+        # Open and read PDF
+        with open(file_path, 'rb') as file:
+            pdf_reader = PyPDF2.PdfReader(file)
+            full_text = ""
+            
+            # Extract text from each page
+            for page in pdf_reader.pages:
+                full_text += page.extract_text() + " "
+            
+            # Split text into chunks
+            words = full_text.split()
+            chunks = []
+            current_chunk = []
+            
+            for word in words:
+                current_chunk.append(word)
+                if len(current_chunk) >= chunk_size:
+                    chunks.append(' '.join(current_chunk))
+                    current_chunk = []
+            
+            if current_chunk:
+                chunks.append(' '.join(current_chunk))
+            
+            # Create vectors for each chunk
+            for i, chunk in enumerate(chunks):
+                vector = create_embeddings(chunk, openai_api_key)
+                vector_doc = {
+                    'file_name': file_name,
+                    'chunk_index': i,
+                    'text': chunk,
+                    'vector': vector,
+                    'timestamp': datetime.now()
+                }
+                vectors_data.append(vector_doc)
+                
+        return vectors_data
+    except Exception as e:
+        raise Exception(f"Error processing PDF {file_name}: {e}")
+
 # Streamlit app
 def themes_main(username):
     
@@ -205,25 +263,24 @@ def themes_main(username):
         st.session_state.theme_title = ""
 
     tab1, tab2 = st.tabs(["Data Generation", "Corpus Upload"])
+
+    user = db['users']
+    current_user = user.find_one({'username': username})
+    if current_user:
+        api_keys = current_user.get('api_keys', {})
+        openai_key = api_keys.get('openai', "")
+        perplexity_key = api_keys.get('perplexity', "")
+    else:
+        api_keys = {}
+    
     
     with tab1:
-        perplexity_api_key = st.text_input("Enter your Perplexity API Key:", key="perplexity_key_tab1")
-        openai_api_key = st.text_input("Enter your OpenAI API Key:", key="openai_key_tab1")
-        mongodb_uri = st.text_input("Enter your MongoDB Atlas URI:", key="mongodb_uri_tab1")
-
-        if not perplexity_api_key:
-            st.warning("Please enter your Perplexity API Key to proceed.")
-        if not openai_api_key:
-            st.warning("Please enter your OpenAI API Key to proceed.")
-        if not mongodb_uri:
-            st.warning("Please enter your MongoDB Atlas URI to proceed.")
-
-        if perplexity_api_key:
+        if perplexity_key:
             topic = st.text_input("Enter a topic:")
             
             if st.button("Generate"):
                 if topic:
-                    st.session_state.generated_text = fetch_perplexity_data(perplexity_api_key, topic)
+                    st.session_state.generated_text = fetch_perplexity_data(perplexity_key, topic)
                     if st.session_state.generated_text:
                         st.markdown(st.session_state.generated_text)
                         st.session_state.show_buttons = True
@@ -251,20 +308,13 @@ def themes_main(username):
                 columns = st.text_input("Enter columns (comma-separated):")
                 if st.button("Structure Data"):
                     if columns:
-                        structured_data = structure_data(openai_api_key, st.session_state.perplexity_text, columns)
+                        structured_data = structure_data(openai_key, st.session_state.perplexity_text, columns)
                         if structured_data:
                             st.session_state.dataframe = pd.DataFrame(structured_data)
                             st.dataframe(st.session_state.dataframe)
-                            theme_title = generate_theme_title(openai_api_key, st.session_state.perplexity_text)
+                            theme_title = generate_theme_title(openai_key, st.session_state.perplexity_text)
                             st.session_state.theme_title = theme_title
-                        
-                        # Store structured table in MongoDB
-                        mongo_uri = os.getenv('MONGO_URI')
-                        mongo_uri = "mongodb+srv://akhilvaidya22:qN2dxc1cpwD64TeI@digital-nova.cbbsn.mongodb.net/?retryWrites=true&w=majority&appName=digital-nova"
-                        database_name = 'digital_nova'
-                        client = MongoClient(mongo_uri)
-                        db = client[database_name]
-                        themes_collection = db['themes']
+                    
                         
                         theme_data = {
                             'username': username,
@@ -286,8 +336,8 @@ def themes_main(username):
                             with st.spinner("Creating vector store... This may take a while depending on the size of your data."):
                                 num_vectors = store_vectors_mongodb(
                                     st.session_state.dataframe,
-                                    mongodb_uri,
-                                    openai_api_key,
+                                    mongo_uri,
+                                    openai_key,
                                     st.session_state.theme_title
                                 )
                             st.session_state.vector_store_created = True
@@ -298,3 +348,90 @@ def themes_main(username):
     # Vector Search Tab
     with tab2:
         st.subheader("Corpus Upload")
+        
+        # Create uploads directory if it doesn't exist
+        UPLOAD_DIR = "uploads"
+        if not os.path.exists(UPLOAD_DIR):
+            os.makedirs(UPLOAD_DIR)
+        
+        # Corpus name input
+        corpus_name = st.text_input("Enter a name for your corpus:")
+        
+        # File uploader
+        uploaded_files = st.file_uploader(
+            "Upload PDF files", 
+            type=["pdf"],
+            accept_multiple_files=True
+        )
+        
+        if corpus_name and uploaded_files:
+
+            if st.button("Save Corpus"):
+                try:
+                    # Save files and collect filenames
+                    saved_files = []
+                    all_vectors = []
+                    
+                    for uploaded_file in uploaded_files:
+                        # Create a filename that includes corpus name for organization
+                        safe_corpus_name = "".join(c for c in corpus_name if c.isalnum() or c in (' ', '-', '_')).strip()
+                        filename = f"{safe_corpus_name}_{uploaded_file.name}"
+                        file_path = os.path.join(UPLOAD_DIR, filename)
+                        
+                        # Save file to uploads directory
+                        with open(file_path, "wb") as f:
+                            f.write(uploaded_file.getbuffer())
+                        saved_files.append(filename)
+                        
+                        # Process PDF and create vectors
+                        with st.spinner(f"Processing {filename} and creating vectors..."):
+                            vectors = process_pdf_and_create_vectors(
+                                file_path, 
+                                filename, 
+                                openai_key
+                            )
+                            all_vectors.extend(vectors)
+                    
+                    # Store vectors in MongoDB
+                    if all_vectors:
+                        vectors_collection = db['vectors']
+                        vectors_collection.create_index([("vector", "2dsphere")])
+                        vectors_collection.insert_many(all_vectors)
+                        st.success(f"Created and stored {len(all_vectors)} vectors from the uploaded documents!")
+                    
+                    # Create or update corpus document in MongoDB
+                    corpus_doc = {
+                        'username': username,
+                        'corpus_name': corpus_name,
+                        'files': saved_files,
+                        'created_at': datetime.now(),
+                        'updated_at': datetime.now()
+                    }
+                    
+                    # Check if corpus already exists for this user
+                    existing_corpus = corpus_collection.find_one({
+                        'username': username,
+                        'corpus_name': corpus_name
+                    })
+                    
+                    if existing_corpus:
+                        # Update existing corpus
+                        corpus_collection.update_one(
+                            {'_id': existing_corpus['_id']},
+                            {
+                                '$set': {
+                                    'files': list(set(existing_corpus['files'] + saved_files)),
+                                    'updated_at': datetime.now()
+                                }
+                            }
+                        )
+                        st.success(f"Files added to existing corpus '{corpus_name}'!")
+                    else:
+                        # Create new corpus
+                        corpus_collection.insert_one(corpus_doc)
+                        st.success(f"New corpus '{corpus_name}' created successfully!")
+                
+                except Exception as e:
+                    st.error(f"Error saving corpus: {e}")
+                finally:
+                    client.close()

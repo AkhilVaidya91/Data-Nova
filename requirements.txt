@@ -17,3 +17,4 @@ python-dotenv
 openai
 pymongo
 llama-index
+pypdf2
