@@ -10,6 +10,12 @@ from openpyxl import Workbook
 from io import BytesIO
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
+from pymongo import MongoClient
+
+MONGO_URI = os.getenv('MONGO_URI')
+client = MongoClient(MONGO_URI)
+db = client['digital_nova']
+output_files_collection = db['output_files']
 
 ####################### FUNCTION DEFINITIONS #######################
 
@@ -80,7 +86,7 @@ def get_post_text(post_url, api_key):
             pass
 
 
-def run(gemini_api_key, api_key, facebook_url, start_date, end_date, max_posts, output_folder_path):
+def run(gemini_api_key, api_key, facebook_url, start_date, end_date, max_posts, output_folder_path, username):
     
     output_folder_path = r"{}".format(output_folder_path)
         
@@ -99,13 +105,15 @@ def run(gemini_api_key, api_key, facebook_url, start_date, end_date, max_posts, 
         categories_str = ""
         for category in categories:
             categories_str += category + ", "
-        categories_str = categories_str[:-2]
+        if len(categories_str) > 0:
+            categories_str = categories_str[:-2]
 
         info = item.get("info")
         info_str = ""
         for inf in info:
             info_str += inf + ", "
-        info_str = info_str[:-2]
+        if len(info_str) > 0:
+            info_str = info_str[:-2]
 
         likes = item.get("likes")
         posts = item.get("posts")
@@ -135,6 +143,14 @@ def run(gemini_api_key, api_key, facebook_url, start_date, end_date, max_posts, 
     excel_filename = f"facebook_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{pageName}_profile.xlsx"
     save_path = f"{output_folder_path}/{excel_filename}"
     profile_wb.save(save_path)
+
+    output_files_collection.insert_one({
+        'username': username,
+        'file_type': 'Facebook-Profile',
+        'file_name': excel_filename,
+        'file_path': save_path,
+        'timestamp': datetime.now()
+    })
                     
     row = 2
         
@@ -172,15 +188,16 @@ def run(gemini_api_key, api_key, facebook_url, start_date, end_date, max_posts, 
         text = item.get("text")
         media = item.get("media")
         caption = ""
-        for med in media:
-            thumb = med.get("thumbnail")
-            
-            if thumb == None:
-                continue
-            thumb_caption = get_post_text(thumb, gemini_api_key)
-            if thumb_caption != None:
+        if media is not None:
+            for med in media:
+                thumb = med.get("thumbnail")
                 
-                caption = caption + thumb_caption
+                if thumb == None:
+                    continue
+                thumb_caption = get_post_text(thumb, gemini_api_key)
+                if thumb_caption != None:
+                    
+                    caption = caption + thumb_caption
 
         image_caption = caption
 
@@ -203,12 +220,17 @@ def run(gemini_api_key, api_key, facebook_url, start_date, end_date, max_posts, 
         
         posts_df.loc[len(posts_df)] = row_data
         row += 1
-
-    excel_filename_2 = f"facebook_{pageName}_posts.xlsx"
-    ## excel filename contains timestamp
     
     excel_filename_2 = f"facebook_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{pageName}_posts.xlsx"
     save_path = f"{output_folder_path}/{excel_filename_2}"
     wb.save(save_path)
+
+    output_files_collection.insert_one({
+        'username': username,
+        'file_type': 'Facebook-Poosts',
+        'file_name': excel_filename_2,
+        'file_path': save_path,
+        'timestamp': datetime.now()
+    })
     
     return account_df, posts_df, excel_filename, excel_filename_2

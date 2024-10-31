@@ -17,7 +17,7 @@ def month_difference(date1_str, date2_str):
     
     return abs(month_diff)
 
-def facebook_page_loader(gemini_api_key, apify_api_key, op_path):
+def facebook_page_loader(gemini_api_key, apify_api_key, op_path, username):
     account_handles = []
     handle = st.text_input(f"Facebook account URL: ")
     
@@ -32,7 +32,7 @@ def facebook_page_loader(gemini_api_key, apify_api_key, op_path):
     max_posts = int(max_posts)
 
     if st.button("Analyze"):
-        acc_df, post_df, acc_file, post_file = facebook.run(gemini_api_key, apify_api_key, handle, start_date, end_date, max_posts, op_path)
+        acc_df, post_df, acc_file, post_file = facebook.run(gemini_api_key, apify_api_key, handle, start_date, end_date, max_posts, op_path, username)
         
         df = acc_df
         df_posts = post_df

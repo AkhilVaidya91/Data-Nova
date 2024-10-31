@@ -57,7 +57,7 @@ def setup_profile(api_key):
 
 def num_months_to_posts(n):
     if n < 7:
-        return 20
+        return 100
     elif n < 13:
         return 200
     else:

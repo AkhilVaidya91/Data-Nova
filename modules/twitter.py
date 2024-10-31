@@ -6,6 +6,12 @@ import tempfile
 import os
 import google.generativeai as genai
 from datetime import datetime, timedelta
+from pymongo import MongoClient
+
+MONGO_URI = os.getenv('MONGO_URI')
+client = MongoClient(MONGO_URI)
+db = client['digital_nova']
+output_files_collection = db['output_files']
 
 # Function to get a caption for an image using the GenAI model
 def get_post_text(post_url, api_key):
@@ -46,7 +52,7 @@ def get_post_text(post_url, api_key):
             pass
 
 # Main function that accepts all inputs, including API keys
-def run(apify_api_token, genai_api_key, company_name, num_accounts, accounts, num_queries, search_queries, since, until, tweets_desired, save_directory):
+def run(apify_api_token, genai_api_key, company_name, num_accounts, accounts, num_queries, search_queries, since, until, tweets_desired, save_directory, username):
     
     # Initialize the ApifyClient with the provided API token
     client = ApifyClient(apify_api_token)
@@ -122,23 +128,17 @@ def run(apify_api_token, genai_api_key, company_name, num_accounts, accounts, nu
     df = pd.DataFrame(tweets_data)
 
     # Save the DataFrame to an Excel file in the specified directory
-    filename = f"{company_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_twitter.xlsx"
-    excel_filename = os.path.join(save_directory, f"{company_name}_twitter.xlsx")
+    filename = f"twitter_{company_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_info.xlsx"
+    excel_filename = os.path.join(save_directory, filename)
     df.to_excel(excel_filename, index=False)
+
+    # Save the output file details to the MongoDB collection
+    output_files_collection.insert_one({
+        'username': username,
+        'file_type': 'twitter',
+        'filename': filename,
+        'filepath': excel_filename,
+        'timestamp': datetime.now(),
+    })
     
     return df, filename
-
-# apify_api_token = input("Enter your Apify API token: ")
-# genai_api_key = input("Enter your GenAI API key: ")
-# company_name = input("Enter the company name: ")
-# # num_accounts = int(input("Enter the number of Twitter accounts: "))
-# accounts = [input(f"Enter account {i+1} username: ") for i in range(num_accounts)]
-# num_queries = int(input("Enter the number of search queries: "))
-# search_queries = [input(f"Enter search query {i+1}: ") for i in range(num_queries)]
-# since = input("Enter the 'since' date (YYYY-MM-DD): ")
-# until = input("Enter the 'until' date (YYYY-MM-DD): ")
-# tweets_desired = int(input("Enter the number of tweets desired: "))
-# save_directory = input("Enter the directory where you want to save the files: ")
-
-# # Call the run function
-# run(apify_api_token, genai_api_key, company_name, num_accounts, accounts, num_queries, search_queries, since, until, tweets_desired, save_directory)

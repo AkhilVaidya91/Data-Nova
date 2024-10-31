@@ -4,14 +4,14 @@ from modules import amazon_reviews
 import zipfile
 import io
 
-def amazon_page_loader(apify_api_key, op_path):
+def amazon_page_loader(apify_api_key, op_path, username):
     num_reviews = st.number_input("Number of reviews", min_value=5, value=5)
     link = st.text_input(f"Amazon Product URL: ")
     links = []
     links.append(link)
     
     if st.button("Analyze"):
-        df, amazon_file_name = amazon_reviews.run(apify_api_key, links, op_path, num_reviews)
+        df, amazon_file_name = amazon_reviews.run(apify_api_key, links, op_path, username, num_reviews)
         st.write("Amazon product reviews details.")
         st.dataframe(df)
         amazon_file_name = os.path.join(op_path, amazon_file_name)

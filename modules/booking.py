@@ -11,6 +11,12 @@ from io import BytesIO
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 import random
+from pymongo import MongoClient
+
+MONGO_URI = os.getenv('MONGO_URI')
+client = MongoClient(MONGO_URI)
+db = client['digital_nova']
+output_files_collection = db['output_files']
 
 ####################### FUNCTION DEFINITIONS #######################
 def remove_comma(text):
@@ -31,7 +37,7 @@ def setup(api_key):
     return client, ws, wb
 
 
-def run(api_key, links, max_posts, output_folder_path):
+def run(api_key, links, max_posts, output_folder_path, username):
     
     output_folder_path = r"{}".format(output_folder_path)
 
@@ -91,4 +97,12 @@ def run(api_key, links, max_posts, output_folder_path):
         excel_filename = f"booking_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{random_number}_reviews.xlsx"
         save_path = f"{output_folder_path}/{excel_filename}"
         wb.save(save_path)
+
+        output_files_collection.insert_one({
+            'username': username,
+            'file_type': 'Booking.com Reviews',
+            'file_name': excel_filename,
+            'file_path': save_path,
+            'timestamp': datetime.now()
+        })
     return df, excel_filename

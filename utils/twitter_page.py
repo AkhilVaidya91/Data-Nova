@@ -4,7 +4,7 @@ from modules import twitter
 import zipfile
 import io
 
-def twitter_page_loader(gemini_api_key, apify_api_key, op_path):
+def twitter_page_loader(gemini_api_key, apify_api_key, op_path, username):
     company_name = st.text_input("Enter the company name: ")
     account = st.text_input("Enter account username: ")
     account = [account]
@@ -15,7 +15,7 @@ def twitter_page_loader(gemini_api_key, apify_api_key, op_path):
     search_queries = [st.text_input(f"Enter hashtag {i + 1}: ") for i in range(num_queries)]
 
     if st.button("Analyze"):
-        df, filename = twitter.run(apify_api_key, gemini_api_key, company_name, 1, account, num_tweets, search_queries, since, until, num_tweets, op_path)
+        df, filename = twitter.run(apify_api_key, gemini_api_key, company_name, 1, account, num_tweets, search_queries, since, until, num_tweets, op_path, username)
         st.write("Twitter details.")
         st.dataframe(df)
         filename = os.path.join(op_path, filename)

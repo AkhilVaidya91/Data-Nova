@@ -10,8 +10,13 @@ import tempfile
 import google.generativeai as genai
 from datetime import datetime
 from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound, TranscriptsDisabled, VideoUnavailable
+from pymongo import MongoClient
 
 api_key = os.getenv('YT_API_KEY')
+MONGO_URI = os.getenv('MONGO_URI')
+client = MongoClient(MONGO_URI)
+db = client['digital_nova']
+output_files_collection = db['output_files']
 
 def get_channel_id(channel_name):
     url = f"https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q={channel_name}&key={api_key}"
@@ -171,7 +176,7 @@ def download_thumbnail_image(url, video_id):
     
 
 
-def scrape_channel_videos_to_excel(channel_id, channel_name,max_vids,max_comments, output_folder_path):
+def scrape_channel_videos_to_excel(channel_id, channel_name,max_vids,max_comments, output_folder_path, username):
     # Get the uploads playlist ID for the channel
     playlist_id = get_uploads_playlist_id(channel_id)
     
@@ -196,6 +201,17 @@ def scrape_channel_videos_to_excel(channel_id, channel_name,max_vids,max_comment
     file_name = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{channel_name}_videos.xlsx"
     excel_filename = f"{output_folder_path}/{file_name}"
     df.to_excel(excel_filename, index=False)
+
+    # Save the file path to the database
+    output_files_collection.insert_one({
+        'username': username,
+        'file_type': 'YouTube_channel_videos',
+        'file_name': file_name,
+        'file_path': excel_filename,
+        'created_at': datetime.now()
+    })
+
+
     return df, file_name
 
 def get_channel_statistics(channel_id):
@@ -222,7 +238,7 @@ def get_channel_statistics(channel_id):
         return None
 
 # Function to save the channel statistics to an Excel file
-def save_channel_statistics_to_excel(channel_id, output_folder_path):
+def save_channel_statistics_to_excel(channel_id, output_folder_path, username):
     # Get channel statistics
     channel_stats = get_channel_statistics(channel_id)
     
@@ -242,5 +258,14 @@ def save_channel_statistics_to_excel(channel_id, output_folder_path):
     
     # Save the data to an Excel file
     df.to_excel(save_path, index=False)
+
+    # Save the file path to the database
+    output_files_collection.insert_one({
+        'username': username,
+        'file_type': 'YouTube_channel_statistics',
+        'file_name': file_name,
+        'file_path': save_path,
+        'created_at': datetime.now()
+    })
 
     return df, file_name

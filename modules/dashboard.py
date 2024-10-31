@@ -5,7 +5,6 @@ import pandas as pd
 
 # MongoDB setup
 MONGO_URI = os.getenv('MONGO_URI')
-# MONGO_URI = "mongodb+srv://akhilvaidya22:qN2dxc1cpwD64TeI@digital-nova.cbbsn.mongodb.net/?retryWrites=true&w=majority&appName=digital-nova"
 client = MongoClient(MONGO_URI)
 db = client['digital_nova']
 users_collection = db['users']
@@ -39,7 +38,7 @@ def display_api_key_section(username, user_info):
     st.subheader("API Keys Management")
     
     # Define the API services
-    api_services = ['apify', 'openai', 'perplexity']
+    api_services = ['apify', 'openai', 'perplexity', 'gemini']
     
     # Create columns for the API key management section
     cols = st.columns([2, 1])

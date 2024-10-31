@@ -12,6 +12,13 @@ from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 import random
 import streamlit as st
+from pymongo import MongoClient
+
+
+MONGO_URI = os.getenv('MONGO_URI')
+client = MongoClient(MONGO_URI)
+db = client['digital_nova']
+output_files_collection = db['output_files']
 
 ####################### FUNCTION DEFINITIONS #######################
 def y_m_d_to_date(year, month, day):
@@ -122,7 +129,7 @@ def extract_article_content(url, perplexity_api_key, max_tokens=500):
         return None
 
 
-def run(api_key, gemini_api_key, perplexity_api_key, query, max_articles, start_date, end_date, output_folder_path):
+def run(api_key, gemini_api_key, perplexity_api_key, query, max_articles, start_date, end_date, output_folder_path, username):
     
     output_folder_path = r"{}".format(output_folder_path)
 
@@ -145,10 +152,12 @@ def run(api_key, gemini_api_key, perplexity_api_key, query, max_articles, start_
     for item in client.dataset(run["defaultDatasetId"]).iterate_items():
 
         title = item.get("title")
-        title = remove_comma(title) #
+        if title:
+            title = remove_comma(title) #
         link = item.get("link") #
         source = item.get("source")
-        source = remove_comma(source) #
+        if source:
+            source = remove_comma(source) #
         publish_date = item.get("publishedAt")
         publish_date = publish_date.split("-")
         published_year = publish_date[0]    #
@@ -156,12 +165,24 @@ def run(api_key, gemini_api_key, perplexity_api_key, query, max_articles, start_
         published_day = publish_date[2]
         published_day = published_day.split("T")[0] #
         image_link = item.get("image")
+        if image_link:
+            image_caption = get_post_text(image_link, gemini_api_key)   #
+            if image_caption:
+                image_caption = remove_comma(image_caption)
+            else:
+                image_caption = "No caption available"
+        else:
+            image_caption = "No image available"
 
-        image_caption = get_post_text(image_link, gemini_api_key)   #
-        image_caption = remove_comma(image_caption)
 
-        description = extract_article_content(link, perplexity_api_key)
-        description = remove_comma(description) #
+        if link:
+            description = extract_article_content(link, perplexity_api_key)
+            if description:
+                description = remove_comma(description) #
+            else:
+                description = "No content available"
+        else:
+            description = "No content available"
         
 
         ws.cell(row=row, column=1, value='Google News')
@@ -180,4 +201,12 @@ def run(api_key, gemini_api_key, perplexity_api_key, query, max_articles, start_
     excel_filename = f"google_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{query}_news.xlsx"
     save_path = f"{output_folder_path}/{excel_filename}"
     wb.save(save_path)
+
+    output_files_collection.insert_one({
+    'username': username,
+    'file_type': 'Instagram',
+    'file_name': excel_filename,
+    'file_path': save_path,
+    'timestamp': datetime.now()
+    })
     return df, excel_filename

@@ -7,7 +7,6 @@ from modules import themes, dashboard
 from utils import instagram_page, tripadvisor_page, website_page, facebook_page, amazon_page, booking_page, google_news_page, youtube_page, twitter_page, flickr_page
 
 MONGO_URI = os.getenv('MONGO_URI')
-# MONGO_URI = "mongodb+srv://akhilvaidya22:qN2dxc1cpwD64TeI@digital-nova.cbbsn.mongodb.net/?retryWrites=true&w=majority&appName=digital-nova"
 
 
 client = MongoClient(MONGO_URI)
@@ -89,19 +88,17 @@ def sidebar_login_signup():
 def main_app():
     st.title("Digital Nova")
     st.subheader("Your GenAI-based research companion")
-
-    gemini_api_key = os.getenv('GEMINI_API_KEY')
-    # apify_api_key = os.getenv('APIFY_API_KEY')
-    # perplexity_api_key = os.getenv('PERPLEXITY_API_KEY')
-    op_path = os.getenv('OP_PATH')
+    op_path = os.getenv('OP_PATH', 'output')
 
     user = st.session_state.username
 
     apify_key = users_collection.find_one({'username': user}).get('api_keys', {}).get('apify', None)
     perplexity_key = users_collection.find_one({'username': user}).get('api_keys', {}).get('perplexity', None)
+    gemini_key = users_collection.find_one({'username': user}).get('api_keys', {}).get('gemini', None)
 
     apify_api_key = apify_key
     perplexity_api_key = perplexity_key
+    gemini_api_key = gemini_key
 
     if not os.path.exists(op_path):
         os.makedirs(op_path)
@@ -127,31 +124,31 @@ def main_app():
         if platform == "Instagram":
             instagram_page.instagram_page_loader(gemini_api_key, apify_api_key, op_path, username=st.session_state.username)
         elif platform == "TripAdvisor reviews":
-            tripadvisor_page.tripadvisor_page_loader(gemini_api_key, apify_api_key, op_path)
+            tripadvisor_page.tripadvisor_page_loader(gemini_api_key, apify_api_key, op_path, st.session_state.username)
 
         elif platform == "Amazon Product Reviews":
-            amazon_page.amazon_page_loader(apify_api_key, op_path)
+            amazon_page.amazon_page_loader(apify_api_key, op_path, st.session_state.username)
 
         elif platform == "Booking.com reviews":
-            booking_page.booking_page_loader(apify_api_key, op_path)
+            booking_page.booking_page_loader(apify_api_key, op_path, st.session_state.username)
 
         elif platform == "Google News":
-            google_news_page.google_news_page_loader(apify_api_key, gemini_api_key, perplexity_api_key, op_path)
+            google_news_page.google_news_page_loader(apify_api_key, gemini_api_key, perplexity_api_key, op_path, st.session_state.username)
 
         elif platform == "YouTube":
-            youtube_page.youtube_page_loader(op_path)
+            youtube_page.youtube_page_loader(op_path, st.session_state.username)
 
         elif platform == "Twitter":
-            twitter_page.twitter_page_loader(gemini_api_key, apify_api_key, op_path)
+            twitter_page.twitter_page_loader(gemini_api_key, apify_api_key, op_path, st.session_state.username)
 
         elif platform == "Flickr":
-            flickr_page.flickr_page_loader(gemini_api_key, apify_api_key, op_path)
+            flickr_page.flickr_page_loader(gemini_api_key, apify_api_key, op_path, st.session_state.username)
 
         elif platform == "Scrape website with AI":
             website_page.website_page_loader()
 
         elif platform == "Facebook":
-            facebook_page.facebook_page_loader(gemini_api_key, apify_api_key, op_path)
+            facebook_page.facebook_page_loader(gemini_api_key, apify_api_key, op_path, st.session_state.username)
     
     elif active_tab == "Theme Generation":
         st.session_state.active_tab = "Theme Generation"

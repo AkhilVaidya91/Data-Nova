@@ -4,15 +4,15 @@ from modules import youtube
 import zipfile
 import io
 
-def youtube_page_loader(op_path):
+def youtube_page_loader(op_path, username):
         channel_name = st.text_input("Enter the channel name: ")
         max_videos = st.number_input("Max Videos", min_value=1, value=5)
 
         if st.button("Analyze"):
             channel_id = youtube.get_channel_id(channel_name)
             if channel_id:
-                df_channel_stats, stats_filename = youtube.save_channel_statistics_to_excel(channel_id, op_path)
-                df_video_stats, videos_filename = youtube.scrape_channel_videos_to_excel(channel_id, channel_name,max_videos,3, op_path)
+                df_channel_stats, stats_filename = youtube.save_channel_statistics_to_excel(channel_id, op_path, username)
+                df_video_stats, videos_filename = youtube.scrape_channel_videos_to_excel(channel_id, channel_name,max_videos,3, op_path, username)
                 st.write("Channel Statistics")
                 st.dataframe(df_channel_stats)
                 st.write("Channel Videos")

@@ -10,6 +10,12 @@ from openpyxl import Workbook
 from io import BytesIO
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
+from pymongo import MongoClient
+
+MONGO_URI = os.getenv('MONGO_URI')
+client = MongoClient(MONGO_URI)
+db = client['digital_nova']
+output_files_collection = db['output_files']
 
 ####################### FUNCTION DEFINITIONS #######################
 def setup(api_key):
@@ -63,7 +69,7 @@ def get_post_text(post_url, api_key):
         except OSError:
             pass
 
-def run(gemini_api_key, api_key, links, max_posts, output_folder_path):
+def run(gemini_api_key, api_key, links, max_posts, output_folder_path, username):
     
     output_folder_path = r"{}".format(output_folder_path)
     df = pd.DataFrame(columns=["Platform", "Date - Year", "Date - Month", "Reviewed from Device", "Rating", "Helpful Votes", "Review Text", "User Location", "Reviewer info - number of total reviews", "Reviewer info - number of cities visited", "Reviewer info - Helpful Count", "Photos text caption", "Place", "Location", "Address", "City", "State", "Country"])
@@ -154,4 +160,12 @@ def run(gemini_api_key, api_key, links, max_posts, output_folder_path):
         excel_filename = f"tripadvisor_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{place_name}_reviews.xlsx"
         save_path = f"{output_folder_path}/{excel_filename}"
         wb.save(save_path)
+
+        output_files_collection.insert_one({
+            "file_name": excel_filename,
+            "file_type": "TripAdvisor Reviews",
+            "file_path": save_path,
+            "username": username,
+            "date": datetime.now()
+        })
     return df, excel_filename

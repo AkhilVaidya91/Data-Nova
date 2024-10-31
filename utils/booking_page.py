@@ -4,14 +4,14 @@ from modules import booking
 import zipfile
 import io
 
-def booking_page_loader(apify_api_key, op_path):
+def booking_page_loader(apify_api_key, op_path, username):
     num_reviews = st.number_input("Number of reviews", min_value=5, value=5)
     link = st.text_input(f"Booking.com property URL: ")
     links = []
     links.append(link)
     
     if st.button("Analyze"):
-        df, booking_file_name = booking.run(apify_api_key, links, num_reviews, op_path)
+        df, booking_file_name = booking.run(apify_api_key, links, num_reviews, op_path, username)
         st.write("Booking.com property reviews details.")
         st.dataframe(df)
         booking_file_name = os.path.join(op_path, booking_file_name)
