@@ -17,6 +17,7 @@ from io import BytesIO
 
 
 mongo_uri = os.getenv('MONGO_URI')
+
 database_name = 'digital_nova'
 client = MongoClient(mongo_uri)
 db = client[database_name]
@@ -244,6 +245,56 @@ def process_pdf_and_create_vectors(file_path, file_name, openai_api_key, chunk_s
         return vectors_data
     except Exception as e:
         raise Exception(f"Error processing PDF {file_name}: {e}")
+    
+def structure_document_content(api_key, document_text, columns):
+    """
+    Structure a single document's content into the specified columns using OpenAI API
+    """
+    prompt = f"""Structure the following document content into a single row with these columns: {columns}
+    
+    Document content: {document_text}
+    Ensure that your response is extremely detailed and covers every single important point from the document. If it has names or dates or project names mentioned, ensure that they are included in the response.
+    Return only a JSON object with the specified columns as keys and appropriate content as values. DO NOT USE THE WORD JSON IN RESPONSE OR EVEN BACKTICS ```. Start and end your response with curley beackets. 
+    Ensure the response can be directly parsed as JSON without any additional text."""
+    
+    messages = [
+        {
+            "role": "system",
+            "content": "You are an AI that structures document content into specific columns for data analysis."
+        },
+        {
+            "role": "user",
+            "content": prompt
+        }
+    ]
+    
+    try:
+        client = OpenAI(api_key=api_key)
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=messages,
+            temperature=0.1
+        )
+        print(response.choices[0].message.content)
+        return json.loads(response.choices[0].message.content)
+    except Exception as e:
+        st.error(f"Failed to structure document content: {e}")
+        return None
+
+def read_pdf_content(file_path):
+    """
+    Read and extract text content from a PDF file
+    """
+    try:
+        with open(file_path, 'rb') as file:
+            pdf_reader = PyPDF2.PdfReader(file)
+            full_text = ""
+            for page in pdf_reader.pages:
+                full_text += page.extract_text() + " "
+            return full_text.strip()
+    except Exception as e:
+        st.error(f"Failed to read PDF content: {e}")
+        return None
 
 # Streamlit app
 def themes_main(username):
@@ -433,5 +484,56 @@ def themes_main(username):
                 
                 except Exception as e:
                     st.error(f"Error saving corpus: {e}")
+                # finally:
+                #     client.close()
+
+            columns = st.text_input("Enter the column names for structuring the documents (comma-separated):")
+
+            if columns and st.button("Structure Documents"):
+                try:
+                    # columns_list = [col.strip() for col in columns.split(',')]
+                    columns_list = columns
+                    structured_data = []
+                    
+                    with st.spinner("Structuring documents... This may take a while."):
+                        for uploaded_file in uploaded_files:
+                            # Read the document content
+                            safe_corpus_name = "".join(c for c in corpus_name if c.isalnum() or c in (' ', '-', '_')).strip()
+                            filename = f"{safe_corpus_name}_{uploaded_file.name}"
+                            file_path = os.path.join(UPLOAD_DIR, filename)
+                            
+                            document_content = read_pdf_content(file_path)
+                            if document_content:
+                                # Structure the content for this document
+                                row_data = structure_document_content(openai_key, document_content, columns_list)
+                                if row_data:
+                                    row_data['filename'] = filename  # Add filename to identify the source
+                                    structured_data.append(row_data)
+                    
+                    if structured_data:
+                        # Create DataFrame
+                        df = pd.DataFrame(structured_data)
+                        st.write("Structured Document Data:")
+                        st.dataframe(df)
+                        
+                        # Update corpus document in MongoDB with structured data
+                        corpus_collection.update_one(
+                            {
+                                'username': username,
+                                'corpus_name': corpus_name
+                            },
+                            {
+                                '$set': {
+                                    'structured_data': structured_data,
+                                    'columns': columns_list,
+                                    'updated_at': datetime.now()
+                                }
+                            }
+                        )
+                        
+                        st.success("Documents structured and stored successfully!")
+                        
+                except Exception as e:
+                    st.error(f"Error structuring documents: {e}")
                 finally:
                     client.close()

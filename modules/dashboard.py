@@ -5,6 +5,7 @@ import pandas as pd
 
 # MongoDB setup
 MONGO_URI = os.getenv('MONGO_URI')
+
 client = MongoClient(MONGO_URI)
 db = client['digital_nova']
 users_collection = db['users']
@@ -107,8 +108,31 @@ def display_dashboard(username):
     if corpuses:
         for corpus in corpuses:
             with st.expander(corpus['corpus_name']):
+                # Display the list of files
+                st.write("Files in corpus:")
                 for file in corpus['files']:
-                    st.write(file)
+                    st.write(f"- {file}")
+                
+                # Display structured data if available
+                if 'structured_data' in corpus:
+                    st.write("\nStructured Data:")
+                    try:
+                        # Convert structured data to dataframe if it's not already
+                        if isinstance(corpus['structured_data'], pd.DataFrame):
+                            df = corpus['structured_data']
+                        else:
+                            df = pd.DataFrame(corpus['structured_data'])
+                        
+                        # Display the dataframe with styling
+                        st.dataframe(
+                            df,
+                            use_container_width=True,
+                            hide_index=True
+                        )
+                    except Exception as e:
+                        st.error(f"Error displaying structured data: {str(e)}")
+                else:
+                    st.info("No structured data available for this corpus")
     else:
         st.write("No corpuses found.")
 
