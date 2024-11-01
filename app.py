@@ -3,11 +3,10 @@ import os
 # import sqlite3
 import hashlib
 from pymongo import MongoClient
-from modules import themes, dashboard
+from modules import themes, dashboard, analytics
 from utils import instagram_page, tripadvisor_page, website_page, facebook_page, amazon_page, booking_page, google_news_page, youtube_page, twitter_page, flickr_page
 
 MONGO_URI = os.getenv('MONGO_URI')
-
 
 client = MongoClient(MONGO_URI)
 db = client['digital_nova']
@@ -156,7 +155,7 @@ def main_app():
 
     elif active_tab == "Analytics":
         st.session_state.active_tab = "Analytics"
-        st.write("Feature under development")
+        analytics.analytics_page(st.session_state.username)
 
     elif active_tab == "Dashboard":
         st.session_state.active_tab = "Dashboard"

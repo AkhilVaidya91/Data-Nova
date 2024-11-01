@@ -16,10 +16,10 @@ import PyPDF2
 from io import BytesIO
 
 
-mongo_uri = os.getenv('MONGO_URI')
+MONGO_URI = os.getenv('MONGO_URI')
 
 database_name = 'digital_nova'
-client = MongoClient(mongo_uri)
+client = MongoClient(MONGO_URI)
 db = client[database_name]
 themes_collection = db['themes']
 corpus_collection = db['corpus']
@@ -201,7 +201,7 @@ def search_vectors(query_text, k, mongodb_uri, openai_api_key):
         client.close()
 
 # Add this function before themes_main()
-def process_pdf_and_create_vectors(file_path, file_name, openai_api_key, chunk_size=1000):
+def process_pdf_and_create_vectors(file_path, file_name, openai_api_key, chunk_size=50):
     """
     Process a PDF file and create vectors for chunks of text
     """
@@ -232,6 +232,7 @@ def process_pdf_and_create_vectors(file_path, file_name, openai_api_key, chunk_s
             
             # Create vectors for each chunk
             for i, chunk in enumerate(chunks):
+                # print("calling openai")
                 vector = create_embeddings(chunk, openai_api_key)
                 vector_doc = {
                     'file_name': file_name,
@@ -275,7 +276,6 @@ def structure_document_content(api_key, document_text, columns):
             messages=messages,
             temperature=0.1
         )
-        print(response.choices[0].message.content)
         return json.loads(response.choices[0].message.content)
     except Exception as e:
         st.error(f"Failed to structure document content: {e}")
@@ -387,7 +387,7 @@ def themes_main(username):
                             with st.spinner("Creating vector store... This may take a while depending on the size of your data."):
                                 num_vectors = store_vectors_mongodb(
                                     st.session_state.dataframe,
-                                    mongo_uri,
+                                    MONGO_URI,
                                     openai_key,
                                     st.session_state.theme_title
                                 )
