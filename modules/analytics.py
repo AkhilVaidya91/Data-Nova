@@ -10,7 +10,7 @@ from datetime import datetime
 
 # MongoDB connection
 MONGO_URI = os.getenv('MONGO_URI')
-# MONGO_URI = "mongodb+srv://akhilvaidya22:qN2dxc1cpwD64TeI@digital-nova.cbbsn.mongodb.net/?retryWrites=true&w=majority&appName=digital-nova"
+MONGO_URI = "mongodb+srv://akhilvaidya22:qN2dxc1cpwD64TeI@digital-nova.cbbsn.mongodb.net/?retryWrites=true&w=majority&appName=digital-nova"
 
 client = MongoClient(MONGO_URI)
 db = client['digital_nova']
@@ -137,7 +137,7 @@ def comparative_analytics(username, theme_title, corpus_name, openai_api_key):
 
 # Streamlit page to display comparative analytics
 def analytics_page(username):
-    st.title("Comparative Analytics")
+    # st.title("Comparative Analytics")
 
     # Fetch user's OpenAI API key from MongoDB
     user = users_collection.find_one({'username': username})
@@ -151,30 +151,36 @@ def analytics_page(username):
         return
 
     # Select theme and corpus
-    themes_cursor = themes_collection.find({'username': username})
-    theme_options = [theme['theme_title'] for theme in themes_cursor]
-    if not theme_options:
-        st.warning("No themes found. Please create a theme first.")
-        return
 
-    selected_theme = st.selectbox("Select a Theme", theme_options)
+    tab1, tab2 = st.tabs(["Document Analytics", "Theme Analytics"])
 
-    corpuses_cursor = corpus_collection.find({'username': username})
-    corpus_options = [corpus['corpus_name'] for corpus in corpuses_cursor]
-    if not corpus_options:
-        st.warning("No corpuses found. Please upload a corpus first.")
-        return
+    with tab1:
+        themes_cursor = themes_collection.find({'username': username})
+        theme_options = [theme['theme_title'] for theme in themes_cursor]
+        if not theme_options:
+            st.warning("No themes found. Please create a theme first.")
+            return
 
-    selected_corpus = st.selectbox("Select a Corpus", corpus_options)
+        selected_theme = st.selectbox("Select a Theme", theme_options)
 
-    if st.button("Run Comparative Analytics"):
-        with st.spinner("Running comparative analytics... This may take a few minutes."):
-            try:
-                results = comparative_analytics(username, selected_theme, selected_corpus, openai_api_key)
-                st.success("Comparative analytics completed!")
-                # Display results
-                for doc_name, table in results.items():
-                    st.subheader(f"Comparative Table for Document: {doc_name}")
-                    st.dataframe(table.fillna(''), use_container_width=True)
-            except Exception as e:
-                st.error(f"An error occurred: {str(e)}")
+        corpuses_cursor = corpus_collection.find({'username': username})
+        corpus_options = [corpus['corpus_name'] for corpus in corpuses_cursor]
+        if not corpus_options:
+            st.warning("No corpuses found. Please upload a corpus first.")
+            return
+
+        selected_corpus = st.selectbox("Select a Corpus", corpus_options)
+
+        if st.button("Run Comparative Analytics"):
+            with st.spinner("Running comparative analytics... This may take a few minutes."):
+                try:
+                    results = comparative_analytics(username, selected_theme, selected_corpus, openai_api_key)
+                    st.success("Comparative analytics completed!")
+                    # Display results
+                    for doc_name, table in results.items():
+                        st.subheader(f"Comparative Table for Document: {doc_name}")
+                        st.dataframe(table.fillna(''), use_container_width=True)
+                except Exception as e:
+                    st.error(f"An error occurred: {str(e)}")
+    with tab2:
+        st.info("Theme Analytics is not yet implemented. This feature will be available soon.")

@@ -7,7 +7,7 @@ from modules import themes, dashboard, analytics
 from utils import instagram_page, tripadvisor_page, website_page, facebook_page, amazon_page, booking_page, google_news_page, youtube_page, twitter_page, flickr_page
 
 MONGO_URI = os.getenv('MONGO_URI')
-# MONGO_URI = "mongodb+srv://akhilvaidya22:qN2dxc1cpwD64TeI@digital-nova.cbbsn.mongodb.net/?retryWrites=true&w=majority&appName=digital-nova"
+MONGO_URI = "mongodb+srv://akhilvaidya22:qN2dxc1cpwD64TeI@digital-nova.cbbsn.mongodb.net/?retryWrites=true&w=majority&appName=digital-nova"
 
 client = MongoClient(MONGO_URI)
 db = client['digital_nova']
@@ -184,7 +184,7 @@ def main_app():
 
 
 def main():
-    st.set_page_config(page_title="Digital Nova", page_icon="📊")
+    st.set_page_config(page_title="Digital Nova", page_icon="📊", layout="wide")
     
     if 'logged_in' not in st.session_state:
         st.session_state.logged_in = False

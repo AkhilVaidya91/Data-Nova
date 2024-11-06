@@ -5,7 +5,7 @@ import pandas as pd
 
 # MongoDB setup
 MONGO_URI = os.getenv('MONGO_URI')
-# MONGO_URI = "mongodb+srv://akhilvaidya22:qN2dxc1cpwD64TeI@digital-nova.cbbsn.mongodb.net/?retryWrites=true&w=majority&appName=digital-nova"
+MONGO_URI = "mongodb+srv://akhilvaidya22:qN2dxc1cpwD64TeI@digital-nova.cbbsn.mongodb.net/?retryWrites=true&w=majority&appName=digital-nova"
 
 client = MongoClient(MONGO_URI)
 db = client['digital_nova']
@@ -79,73 +79,84 @@ def display_api_key_section(username, user_info):
 def display_dashboard(username):
     # Fetch user information
     user_info = get_user_info(username)
-    if user_info:
-        st.subheader(f"User Information: {user_info['username']}")
+    if not user_info:
+        st.error("User not found.")
+        return
 
-    # Display API Keys Section
-    display_api_key_section(username, user_info)
-    
-    # Display table of all user's generated output files
-    st.subheader("Generated Output Files")
-    output_files = get_user_output_files(username)
-    if output_files:
-        for file in output_files:
-            file_path = file['file_path']
-            file_name = file['file_name']
-            with open(file_path, "rb") as file_data:
-                st.write(file_name)
-                st.download_button(
-                    label="Download",
-                    data=file_data,
-                    file_name=file_name,
-                    mime='application/octet-stream'
-                )
-    else:
-        st.write("No output files found.")
+    # Create tabs
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["User Info", "API Keys", "Scraped Files", "Uploaded Corpuses", "Themes"])
 
-    # Display list of all user-uploaded corpuses
-    st.subheader("Uploaded Corpuses")
-    corpuses = get_user_corpuses(username)
-    if corpuses:
-        for corpus in corpuses:
-            with st.expander(corpus['corpus_name']):
-                # Display the list of files
-                st.write("Files in corpus:")
-                for file in corpus['files']:
-                    st.write(f"- {file}")
-                
-                # Display structured data if available
-                if 'structured_data' in corpus:
-                    st.write("\nStructured Data:")
-                    try:
-                        # Convert structured data to dataframe if it's not already
-                        if isinstance(corpus['structured_data'], pd.DataFrame):
-                            df = corpus['structured_data']
-                        else:
+    with tab1:
+        # User Info
+        st.subheader("User Information")
+        st.write(f"**Username:** {user_info['username']}")
+        # Add more user info if available
+        if 'email' in user_info:
+            st.write(f"**Email:** {user_info['email']}")
+
+    with tab2:
+        # API Keys
+        display_api_key_section(username, user_info)
+
+    with tab3:
+        # Scraped Files
+        st.subheader("Scraped Files")
+        output_files = get_user_output_files(username)
+        if output_files:
+            for file in output_files:
+                file_path = file['file_path']
+                file_name = file['file_name']
+                with open(file_path, "rb") as file_data:
+                    st.write(f"**{file_name}**")
+                    st.download_button(
+                        label="Download",
+                        data=file_data.read(),
+                        file_name=file_name,
+                        mime='application/octet-stream'
+                    )
+        else:
+            st.write("No scraped files found.")
+
+    with tab4:
+        # Uploaded Corpuses
+        st.subheader("Uploaded Corpuses")
+        corpuses = get_user_corpuses(username)
+        if corpuses:
+            for corpus in corpuses:
+                with st.expander(corpus['corpus_name']):
+                    # Display the list of files
+                    st.write("**Files in corpus:**")
+                    for file in corpus.get('files', []):
+                        st.write(f"- {file}")
+                    
+                    # Display structured data if available
+                    if 'structured_data' in corpus:
+                        st.write("**Structured Data:**")
+                        try:
                             df = pd.DataFrame(corpus['structured_data'])
-                        
-                        # Display the dataframe with styling
-                        st.dataframe(
-                            df,
-                            use_container_width=True,
-                            hide_index=True
-                        )
-                    except Exception as e:
-                        st.error(f"Error displaying structured data: {str(e)}")
-                else:
-                    st.info("No structured data available for this corpus")
-    else:
-        st.write("No corpuses found.")
+                            st.dataframe(df, use_container_width=True)
+                        except Exception as e:
+                            st.error(f"Error displaying structured data: {str(e)}")
+                    else:
+                        st.info("No structured data available for this corpus.")
+        else:
+            st.write("No corpuses found.")
 
-    # Display the user generated themes
-    st.subheader("Generated Themes")
-    themes = get_user_themes(username)
-    if themes:
-        for theme in themes:
-            with st.expander(theme['theme_title']):
-                st.dataframe(theme['structured_data'])
-    else:
-        st.write("No themes found.")
+    with tab5:
+        # Themes
+        st.subheader("Generated Themes")
+        themes = get_user_themes(username)
+        if themes:
+            for theme in themes:
+                with st.expander(theme['theme_title']):
+                    st.write("**Structured Data:**")
+                    try:
+                        df = pd.DataFrame(theme['structured_data'])
+                        st.dataframe(df, use_container_width=True)
+                    except Exception as e:
+                        st.error(f"Error displaying theme data: {str(e)}")
+        else:
+            st.write("No themes found.")
 
 def dashboard():
     if 'username' in st.session_state:

@@ -38,7 +38,7 @@ def fetch_perplexity_data(api_key, topic):
         {
             "role": "system",
             "content": (
-                "You are a UN expert providing official information about the Sustainable Development Goals. Provide only verified information with working reference links."
+                "You are a expert providing official information about the given topic. Provide only verified information with atleast 3 working reference links for citations."
             ),
         },
         {
@@ -252,6 +252,7 @@ def structure_document_content(api_key, document_text, columns):
     Structure a single document's content into the specified columns using OpenAI API
     """
     prompt = f"""Structure the following document content into a single row with these columns: {columns}
+    The goals colums should contain the main theme goals that can be identified, keywords should list out atleast 8 keywords per goal.
     
     Document content: {document_text}
     Ensure that your response is extremely detailed and covers every single important point from the document. If it has names or dates or project names mentioned, ensure that they are included in the response.
@@ -313,7 +314,7 @@ def themes_main(username):
     if "current_theme" not in st.session_state:
         st.session_state.current_theme = ""
     
-    tab1, tab2 = st.tabs(["Data Generation", "Corpus Upload"])
+    tab1, tab2 = st.tabs(["Theme Generation", "Corpus Upload"])
 
     user = db['users']
     current_user = user.find_one({'username': username})
@@ -373,7 +374,9 @@ def themes_main(username):
                 st.subheader("Stored Text")
                 st.markdown(st.session_state.perplexity_text)
                 
-                columns = st.text_input("Enter columns (comma-separated):")
+                # columns = st.text_input("Enter columns (comma-separated):")
+                columns = "Goal, Description, Keywords, Reference links, Examples"
+                st.info("Columns: Goal, Description, Keywords, Reference links, Examples")
                 if st.button("Structure Data"):
                     if columns:
                         structured_data = structure_data(openai_key, st.session_state.perplexity_text, columns)
