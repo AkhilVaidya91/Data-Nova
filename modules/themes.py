@@ -17,6 +17,7 @@ from io import BytesIO
 
 
 MONGO_URI = os.getenv('MONGO_URI')
+MONGO_URI = "mongodb+srv://akhilvaidya22:qN2dxc1cpwD64TeI@digital-nova.cbbsn.mongodb.net/?retryWrites=true&w=majority&appName=digital-nova"
 
 database_name = 'digital_nova'
 client = MongoClient(MONGO_URI)
@@ -200,7 +201,6 @@ def search_vectors(query_text, k, mongodb_uri, openai_api_key):
     finally:
         client.close()
 
-# Add this function before themes_main()
 def process_pdf_and_create_vectors(file_path, file_name, openai_api_key, chunk_size=50):
     """
     Process a PDF file and create vectors for chunks of text
@@ -296,9 +296,7 @@ def read_pdf_content(file_path):
         st.error(f"Failed to read PDF content: {e}")
         return None
 
-# Streamlit app
 def themes_main(username):
-    
     # Initialize session state variables
     if "perplexity_text" not in st.session_state:
         st.session_state.perplexity_text = ""
@@ -312,7 +310,9 @@ def themes_main(username):
         st.session_state.vector_store_created = False
     if "theme_title" not in st.session_state:
         st.session_state.theme_title = ""
-
+    if "current_theme" not in st.session_state:
+        st.session_state.current_theme = ""
+    
     tab1, tab2 = st.tabs(["Data Generation", "Corpus Upload"])
 
     user = db['users']
@@ -323,18 +323,31 @@ def themes_main(username):
         perplexity_key = api_keys.get('perplexity', "")
     else:
         api_keys = {}
-    
-    
+
     with tab1:
         if perplexity_key:
+            theme_name = st.text_input("Enter a theme name:")
+            st.session_state.current_theme = theme_name
             topic = st.text_input("Enter a topic:")
             
             if st.button("Generate"):
                 if topic:
+
                     st.session_state.generated_text = fetch_perplexity_data(perplexity_key, topic)
                     if st.session_state.generated_text:
                         st.markdown(st.session_state.generated_text)
                         st.session_state.show_buttons = True
+
+                        # Store query and response in MongoDB
+                        chat_logs_collection = db['chat_logs']
+                        chat_log_doc = {
+                            'username': username,
+                            'theme': st.session_state.current_theme,
+                            'query': topic,
+                            'response': st.session_state.generated_text,
+                            'timestamp': datetime.now()
+                        }
+                        chat_logs_collection.insert_one(chat_log_doc)
                 else:
                     st.warning("Please enter a topic to generate text.")
 
@@ -344,12 +357,16 @@ def themes_main(username):
                 with col1:
                     if st.button("Keep"):
                         st.session_state.perplexity_text = st.session_state.generated_text
+                        st.session_state.generated_text = ""  # Clear generated text
+                        st.session_state.show_buttons = False  # Hide buttons
                         st.success("Text kept successfully!")
+                        st.rerun()
                 with col2:
                     if st.button("Discard"):
-                        st.session_state.generated_text = ""
-                        st.session_state.show_buttons = False
+                        st.session_state.generated_text = ""  # Clear generated text
+                        st.session_state.show_buttons = False  # Hide buttons
                         st.warning("Text discarded. Please enter a new topic.")
+                        st.rerun()
 
             # Show the structuring options only if there's kept text
             if st.session_state.perplexity_text:
@@ -363,7 +380,8 @@ def themes_main(username):
                         if structured_data:
                             st.session_state.dataframe = pd.DataFrame(structured_data)
                             st.dataframe(st.session_state.dataframe)
-                            theme_title = generate_theme_title(openai_key, st.session_state.perplexity_text)
+                            # theme_title = generate_theme_title(openai_key, st.session_state.perplexity_text)
+                            theme_title = st.session_state.current_theme
                             st.session_state.theme_title = theme_title
                     
                         
@@ -379,23 +397,22 @@ def themes_main(username):
                         st.success(f"Structured table stored in MongoDB with theme title '{theme_title}' successfully!")
                     else:
                         st.warning("Please enter columns to structure data.")
-                
-                # Add Vector Store Creation Button
-                if st.session_state.dataframe is not None:
-                    if st.button("Create Vector Store"):
-                        try:
-                            with st.spinner("Creating vector store... This may take a while depending on the size of your data."):
-                                num_vectors = store_vectors_mongodb(
-                                    st.session_state.dataframe,
-                                    MONGO_URI,
-                                    openai_key,
-                                    st.session_state.theme_title
-                                )
-                            st.session_state.vector_store_created = True
-                            st.success(f"Successfully created vector store with {num_vectors} vectors!")
-                        except Exception as e:
-                            st.error(f"Failed to create vector store: {e}")
-    
+
+            # Add Chat History expander
+            if st.session_state.current_theme:
+                with st.expander("Chat History"):
+                    chat_logs_collection = db['chat_logs']
+                    chat_logs = chat_logs_collection.find({
+                        'username': username,
+                        'theme': st.session_state.current_theme
+                    }).sort('timestamp', -1)
+                    for chat in chat_logs:
+                        st.markdown(f"**You:** {chat['query']}")
+                        st.markdown(f"**Perplexity:** {chat['response']}")
+
+        else:
+            st.warning("Please set your Perplexity API key in your profile settings.")
+
     # Vector Search Tab
     with tab2:
         st.subheader("Corpus Upload")

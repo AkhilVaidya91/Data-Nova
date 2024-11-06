@@ -29,7 +29,7 @@ def markdown_to_dataframe(markdown_content):
 
 # Streamlit UI
 # st.title("AI Web Scraper")
-def website_page_loader():
+def website_page_loader(gemini_api_key):
     url = st.text_input("Enter Website URL")
 
     # Step 1: Scrape the Website
@@ -60,7 +60,7 @@ def website_page_loader():
 
                 # Parse the content with Ollama
                 dom_chunks = split_dom_content(st.session_state.dom_content)
-                parsed_result = parse_with_gemini(dom_chunks, parse_description)
+                parsed_result = parse_with_gemini(dom_chunks, parse_description, gemini_api_key)
                 # st.write(parsed_result)
 
                 df = markdown_to_dataframe(parsed_result)

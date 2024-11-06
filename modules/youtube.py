@@ -12,14 +12,21 @@ from datetime import datetime
 from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound, TranscriptsDisabled, VideoUnavailable
 from pymongo import MongoClient
 
-api_key = os.getenv('YT_API_KEY')
+
+# api_key = os.getenv('YT_API_KEY')
+youtube_api_key = None
 MONGO_URI = os.getenv('MONGO_URI')
+# MONGO_URI = "mongodb+srv://akhilvaidya22:qN2dxc1cpwD64TeI@digital-nova.cbbsn.mongodb.net/?retryWrites=true&w=majority&appName=digital-nova"
 client = MongoClient(MONGO_URI)
 db = client['digital_nova']
 output_files_collection = db['output_files']
 
-def get_channel_id(channel_name):
-    url = f"https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q={channel_name}&key={api_key}"
+def set_api_key(api_key):
+    global youtube_api_key
+    youtube_api_key = api_key
+
+def get_channel_id(channel_name, youtube_api_key):
+    url = f"https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q={channel_name}&key={youtube_api_key}"
     
     response = requests.get(url)
     data = response.json()
@@ -31,7 +38,7 @@ def get_channel_id(channel_name):
         return None
     
 def get_uploads_playlist_id(channel_id):
-    url = f"https://www.googleapis.com/youtube/v3/channels?part=contentDetails&id={channel_id}&key={api_key}"
+    url = f"https://www.googleapis.com/youtube/v3/channels?part=contentDetails&id={channel_id}&key={youtube_api_key}"
     response = requests.get(url)
     data = response.json()
     
@@ -43,7 +50,7 @@ def get_uploads_playlist_id(channel_id):
     
 def get_video_ids_from_playlist(playlist_id, max_videos):
     video_ids = []
-    url = f"https://www.googleapis.com/youtube/v3/playlistItems?part=contentDetails&playlistId={playlist_id}&maxResults=50&key={api_key}"
+    url = f"https://www.googleapis.com/youtube/v3/playlistItems?part=contentDetails&playlistId={playlist_id}&maxResults=50&key={youtube_api_key}"
     
     while url and len(video_ids) < max_videos:
         response = requests.get(url)
@@ -58,7 +65,7 @@ def get_video_ids_from_playlist(playlist_id, max_videos):
                     break
         
         # Handle pagination (next page token)
-        url = f"https://www.googleapis.com/youtube/v3/playlistItems?part=contentDetails&playlistId={playlist_id}&maxResults=50&pageToken={data.get('nextPageToken')}&key={api_key}" if 'nextPageToken' in data and len(video_ids) < max_videos else None
+        url = f"https://www.googleapis.com/youtube/v3/playlistItems?part=contentDetails&playlistId={playlist_id}&maxResults=50&pageToken={data.get('nextPageToken')}&key={youtube_api_key}" if 'nextPageToken' in data and len(video_ids) < max_videos else None
     
     return video_ids[:max_videos]
 
@@ -122,7 +129,7 @@ def get_post_text(post_url, api_key):
 def get_video_details(video_ids,max_comments):
     video_data = []
     for i in range(0, len(video_ids), 50):
-        url = f"https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id={','.join(video_ids[i:i+50])}&key={api_key}"
+        url = f"https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id={','.join(video_ids[i:i+50])}&key={youtube_api_key}"
         response = requests.get(url)
         data = response.json()
 
@@ -152,7 +159,7 @@ def get_video_details(video_ids,max_comments):
 
 # Function to get top 5 comments of a video
 def get_video_comments(video_id, max_comments):
-    url = f"https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId={video_id}&maxResults={max_comments}&key={api_key}"
+    url = f"https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId={video_id}&maxResults={max_comments}&key={youtube_api_key}"
     response = requests.get(url)
     data = response.json()
 
@@ -176,7 +183,9 @@ def download_thumbnail_image(url, video_id):
     
 
 
-def scrape_channel_videos_to_excel(channel_id, channel_name,max_vids,max_comments, output_folder_path, username):
+def scrape_channel_videos_to_excel(channel_id, channel_name,max_vids,max_comments, output_folder_path, username, youtube_key):
+
+    set_api_key(youtube_key)
     # Get the uploads playlist ID for the channel
     playlist_id = get_uploads_playlist_id(channel_id)
     
@@ -215,7 +224,7 @@ def scrape_channel_videos_to_excel(channel_id, channel_name,max_vids,max_comment
     return df, file_name
 
 def get_channel_statistics(channel_id):
-    url = f"https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id={channel_id}&key={api_key}"
+    url = f"https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id={channel_id}&key={youtube_api_key}"
     response = requests.get(url)
     data = response.json()
     
@@ -238,7 +247,9 @@ def get_channel_statistics(channel_id):
         return None
 
 # Function to save the channel statistics to an Excel file
-def save_channel_statistics_to_excel(channel_id, output_folder_path, username):
+def save_channel_statistics_to_excel(channel_id, output_folder_path, username, youtube_key):
+
+    set_api_key(youtube_key)
     # Get channel statistics
     channel_stats = get_channel_statistics(channel_id)
     

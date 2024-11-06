@@ -2,6 +2,7 @@ import os
 # from langchain_gemini import GeminiLLM
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
+from pymongo import MongoClient
 
 # Template remains unchanged
 template = (
@@ -14,24 +15,24 @@ template = (
     "5. **Data only in table format:** Your output should contain only the the data specifically in the form of a table, with the relevant column names. Note that the table will later be used to convert to a dataframe, so do not add any extra information."
 )
 
-gemini_api_key = os.getenv("GEMINI_API_KEY")
+# gemini_api_key = os.getenv("GEMINI_API_KEY")
 
 # Initialize Gemini model with API key
 
-model = ChatGoogleGenerativeAI(
+def remove_comma(text):
+    text = text.replace(",", "")
+    return text
+
+def parse_with_gemini(dom_chunks, parse_description, gemini_api_key):
+
+    model = ChatGoogleGenerativeAI(
     model="gemini-1.5-flash",
     temperature=0,
     max_tokens=None,
     timeout=None,
     max_retries=2,
     api_key=gemini_api_key
-)
-
-def remove_comma(text):
-    text = text.replace(",", "")
-    return text
-
-def parse_with_gemini(dom_chunks, parse_description):
+    )
     prompt = ChatPromptTemplate.from_template(template)
     chain = prompt | model
 

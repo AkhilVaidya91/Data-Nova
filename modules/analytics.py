@@ -10,6 +10,7 @@ from datetime import datetime
 
 # MongoDB connection
 MONGO_URI = os.getenv('MONGO_URI')
+# MONGO_URI = "mongodb+srv://akhilvaidya22:qN2dxc1cpwD64TeI@digital-nova.cbbsn.mongodb.net/?retryWrites=true&w=majority&appName=digital-nova"
 
 client = MongoClient(MONGO_URI)
 db = client['digital_nova']

@@ -7,6 +7,7 @@ from modules import themes, dashboard, analytics
 from utils import instagram_page, tripadvisor_page, website_page, facebook_page, amazon_page, booking_page, google_news_page, youtube_page, twitter_page, flickr_page
 
 MONGO_URI = os.getenv('MONGO_URI')
+# MONGO_URI = "mongodb+srv://akhilvaidya22:qN2dxc1cpwD64TeI@digital-nova.cbbsn.mongodb.net/?retryWrites=true&w=majority&appName=digital-nova"
 
 client = MongoClient(MONGO_URI)
 db = client['digital_nova']
@@ -94,6 +95,7 @@ def main_app():
     apify_key = users_collection.find_one({'username': user}).get('api_keys', {}).get('apify', None)
     perplexity_key = users_collection.find_one({'username': user}).get('api_keys', {}).get('perplexity', None)
     gemini_key = users_collection.find_one({'username': user}).get('api_keys', {}).get('gemini', None)
+    youtube_key = users_collection.find_one({'username': user}).get('api_keys', {}).get('YouTube', None)
 
     apify_api_key = apify_key
     perplexity_api_key = perplexity_key
@@ -105,6 +107,16 @@ def main_app():
     active_tab = st.sidebar.radio("Select Tab", tabs, index=tabs.index(st.session_state.get('active_tab', "Data Scraping")))
     if active_tab == "Data Scraping":
         st.session_state.active_tab = "Data Scraping"
+
+        ## check if user has Aipfy API key
+        if not apify_api_key:
+            st.warning("Please add your Apify API key in the sidebar to proceed.")
+            return
+        
+        if not gemini_api_key:
+            st.warning("Please add your Gemini API key in the sidebar to proceed.")
+            return
+
         category = st.selectbox("Select Category", ["Social Media", "e-WOM", "News", "Website"])
 
         if category == "Social Media":
@@ -132,10 +144,19 @@ def main_app():
             booking_page.booking_page_loader(apify_api_key, op_path, st.session_state.username)
 
         elif platform == "Google News":
+            ## check if user has Perplexity API key
+            if not perplexity_api_key:
+                st.warning("Please add your Perplexity API key in the user profile to proceed.")
+                return
             google_news_page.google_news_page_loader(apify_api_key, gemini_api_key, perplexity_api_key, op_path, st.session_state.username)
 
         elif platform == "YouTube":
-            youtube_page.youtube_page_loader(op_path, st.session_state.username)
+            ## checking if user has YouTube API key
+
+            if not youtube_key:
+                st.warning("Please add your YouTube API key in the user profile to proceed.")
+                return
+            youtube_page.youtube_page_loader(op_path, st.session_state.username, youtube_key)
 
         elif platform == "Twitter":
             twitter_page.twitter_page_loader(gemini_api_key, apify_api_key, op_path, st.session_state.username)
@@ -144,7 +165,7 @@ def main_app():
             flickr_page.flickr_page_loader(gemini_api_key, apify_api_key, op_path, st.session_state.username)
 
         elif platform == "Scrape website with AI":
-            website_page.website_page_loader()
+            website_page.website_page_loader(gemini_api_key)
 
         elif platform == "Facebook":
             facebook_page.facebook_page_loader(gemini_api_key, apify_api_key, op_path, st.session_state.username)
