@@ -36,6 +36,53 @@ def cosine_similarity(v1, v2):
     norm_product = norm(v1) * norm(v2)
     return dot_product / norm_product if norm_product != 0 else 0
 
+def derive_analytics(goal, reference_text, openai_api_key):
+    ## drive summarized analytics based on the extracted test with the goal as the theme using openai
+
+    # call openai to summarize the text
+
+    template = f"""Given a text excerpt from a company's annual report, analyze it following these specific guidelines:
+    1. Analyze the text as an experienced financial analyst
+    2. Structure the output in markdown with two sections:
+
+    **Insights**
+    - Provide 2-3 concise sentences describing the companys actions toward the specified goal
+    - Base insights strictly on the provided text
+    - If no relevant information exists, state No Insights Available
+
+    **Keywords**
+    - Extract key elements from the text including:
+    * Important phrases
+    * Names of people
+    * Locations
+    * Monetary values
+    * Project names
+    * Significant dates
+    - Include only keywords present in the source text
+    - If there is No Insights Available in the insights output section, then state No Keywords Available
+
+    Rules:
+    - Draw conclusions only from the provided text
+    - Keep insights focused on the specific goal mentioned
+    - Avoid inferring information not explicitly stated
+    - Extract keywords verbatim from the source text
+    - do not use headings or sub headings, just a bold text for the Insights key and Keywords key and rest of the text in plain text
+
+    Here is the text excerpt: {reference_text}
+    Here is the relevant goal text: {goal}"""
+
+    client = OpenAI(api_key=openai_api_key)
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        # prompt=template,
+        messages=[
+        {"role": "user", "content": template}
+        ],
+        max_tokens=1000,
+        temperature=0.2,
+    )
+    return response.choices[0].message.content
+
 # Retrieve theme data
 def get_theme_data(username, theme_title):
     theme = themes_collection.find_one({'username': username, 'theme_title': theme_title})
@@ -178,9 +225,65 @@ def analytics_page(username):
                     st.success("Comparative analytics completed!")
                     # Display results
                     for doc_name, table in results.items():
-                        st.subheader(f"Comparative Table for Document: {doc_name}")
+                        st.info(f"**Comparative Table for Document**: {doc_name}")
                         st.dataframe(table.fillna(''), use_container_width=True)
                 except Exception as e:
                     st.error(f"An error occurred: {str(e)}")
     with tab2:
         st.info("Theme Analytics is not yet implemented. This feature will be available soon.")
+        themes_cursor = themes_collection.find({'username': username})
+        theme_options = [theme['theme_title'] for theme in themes_cursor]
+        if not theme_options:
+            st.warning("No themes found. Please create a theme first.")
+            return
+
+        selected_theme = st.selectbox("Theme Selection", theme_options)
+
+        corpuses_cursor = corpus_collection.find({'username': username})
+        corpus_options = [corpus['corpus_name'] for corpus in corpuses_cursor]
+        if not corpus_options:
+            st.warning("No corpuses found. Please upload a corpus first.")
+            return
+
+        selected_corpus = st.selectbox("Corpus Selection", corpus_options)
+
+        if st.button("Run Theme Comparative Analytics"):
+            theme_df = get_theme_data(username, selected_theme)
+            corpus_documents = get_corpus_data(username, selected_corpus)
+
+            for idx, row in theme_df.iterrows():
+                goal = row['Goal']
+                description = row['Description']
+                # keywords = row['Keywords']
+
+                desc_embedding = create_embeddings(description, openai_api_key)
+                # keywords_embedding = create_embeddings(keywords, openai_api_key)
+
+                with st.expander(goal):
+                            # st.write(row)
+                            for doc in corpus_documents:
+                                doc_name = doc['file_name']
+                                chunk_texts = doc['texts']
+                                chunk_embeddings = [np.array(embedding) for embedding in doc['embeddings']]
+
+                                # Compute similarities with Description
+                                desc_similarities = [cosine_similarity(desc_embedding, chunk_embedding) for chunk_embedding in chunk_embeddings]
+                                max_desc_similarity = max(desc_similarities)
+                                max_desc_index = desc_similarities.index(max_desc_similarity)
+                                matching_desc_text = chunk_texts[max_desc_index]
+
+                                # Compute similarities with Keywords
+                                # keywords_similarities = [cosine_similarity(keywords_embedding, chunk_embedding) for chunk_embedding in chunk_embeddings]
+                                # max_keywords_similarity = max(keywords_similarities)
+                                # max_keywords_index = keywords_similarities.index(max_keywords_similarity)
+                                # matching_keywords_text = chunk_texts[max_keywords_index]
+
+                                st.info(f"**Document:** {doc_name}")
+                                relevant_goal = goal
+                                relevant_text = matching_desc_text
+
+                                analytics_output = derive_analytics(relevant_goal, relevant_text, openai_api_key)
+                                st.markdown(analytics_output)
+                                # st.write(f"**Mathing Description text**: {matching_desc_text}")
+                                # st.write(f"**Similarity Score with Description**: {max_desc_similarity}")
+                                

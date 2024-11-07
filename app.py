@@ -60,7 +60,7 @@ def welcome_screen():
 
 # Login/Signup sidebar
 def sidebar_login_signup():
-    st.sidebar.title("Login/Signup")
+    st.sidebar.title("Digital Nova")
     menu = ["Login", "SignUp"]
     choice = st.sidebar.selectbox("Menu", menu)
 
