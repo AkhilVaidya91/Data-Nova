@@ -19,27 +19,27 @@ def month_difference(date1_str, date2_str):
 
 def facebook_page_loader(gemini_api_key, apify_api_key, op_path, username):
     account_handles = []
-    handle = st.text_input(f"Facebook account URL: ")
+    handle = st.text_input(f"Facebook account URL: ", key="facebook_account")
     
-    max_posts = st.number_input("Max Posts Per Month", min_value=1, value=5)
+    max_posts = st.number_input("Max Posts Per Month", min_value=1, value=5, key="facebook_max_posts")
 
-    start_date = st.date_input("Start Date (Older)")
-    end_date = st.date_input("End Date (Newer)")
+    start_date = st.date_input("Start Date (Older)", key="facebook_start_date")
+    end_date = st.date_input("End Date (Newer)", key="facebook_end_date")
 
     diff = month_difference(str(start_date), str(end_date))
     max_posts = max_posts * diff * 1.5
     max_posts = round(max_posts)
     max_posts = int(max_posts)
 
-    if st.button("Analyze"):
+    if st.button("Analyze", key="facebook_analyze"):
         acc_df, post_df, acc_file, post_file = facebook.run(gemini_api_key, apify_api_key, handle, start_date, end_date, max_posts, op_path, username)
         
         df = acc_df
         df_posts = post_df
-        st.write("Instagram account profile details.")
-        st.dataframe(df)
-        st.write("Instagram account posts details.")
-        st.dataframe(df_posts)
+        st.write("Instagram account profile details.", key="facebook_profile")
+        st.dataframe(df, key="facebook_profile_df")
+        st.write("Instagram account posts details.", key="facebook_posts")
+        st.dataframe(df_posts, key="facebook_posts_df")
         acc_file_path = os.path.join(op_path, acc_file)
         post_file_path = os.path.join(op_path, post_file)
         zip_buffer = io.BytesIO()
@@ -53,5 +53,6 @@ def facebook_page_loader(gemini_api_key, apify_api_key, op_path, username):
             label="Download ZIP",
             data=zip_buffer,
             file_name="instagram_data.zip",
-            mime="application/zip"
+            mime="application/zip",
+            key="facebook_download"
         )

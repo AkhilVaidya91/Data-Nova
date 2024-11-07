@@ -230,7 +230,6 @@ def analytics_page(username):
                 except Exception as e:
                     st.error(f"An error occurred: {str(e)}")
     with tab2:
-        st.info("Theme Analytics is not yet implemented. This feature will be available soon.")
         themes_cursor = themes_collection.find({'username': username})
         theme_options = [theme['theme_title'] for theme in themes_cursor]
         if not theme_options:

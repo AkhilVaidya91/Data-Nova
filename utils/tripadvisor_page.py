@@ -5,19 +5,20 @@ import zipfile
 import io
 
 def tripadvisor_page_loader(gemini_api_key, apify_api_key, op_path, username):
-    num_reviews = st.number_input("Number of reviews", min_value=5, value=5)
-    link = st.text_input(f"Tripadvisor property URL: ")
+    num_reviews = st.number_input("Number of reviews", min_value=5, value=5, key="tripadvisor_num_reviews")
+    link = st.text_input(f"Tripadvisor property URL: ", key="tripadvisor_link")
     links = []
     links.append(link)
-    if st.button("Analyze"):
+    if st.button("Analyze", key="tripadvisor_analyze"):
         df, trip_file_name = tripadvisor.run(gemini_api_key, apify_api_key, links, num_reviews, op_path, username)
-        st.write("Tripadvisor reviews details.")
-        st.dataframe(df)
+        st.write("Tripadvisor reviews details.", key="tripadvisor_reviews_details")
+        st.dataframe(df, key="tripadvisor_reviews_df")
         trip_file_name = os.path.join(op_path, trip_file_name)
         with open(trip_file_name, "rb") as f:
             st.download_button(
                 label="Download Data",
                 data=f,
                 file_name=trip_file_name,
-                mime="application/xlsx"
+                mime="application/xlsx",
+                key="tripadvisor_download_button"
             )
