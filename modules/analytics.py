@@ -48,16 +48,17 @@ def derive_analytics(goal, reference_text, openai_api_key):
     **Insights**
     - Provide 2-3 concise sentences describing the companys actions toward the specified goal
     - Base insights strictly on the provided text
+    - Ensure that you include information regarding names, locations, dates, and monetary values if mentioned in the text
     - If no relevant information exists, state No Insights Available
 
     **Keywords**
     - Extract key elements from the text including:
     * Important phrases
-    * Names of people
-    * Locations
-    * Monetary values
+    * Names of people or organizations
+    * Locations (with project context ONLY, not just locations)
+    * Monetary values (with project context ONLY, not just numbers)
     * Project names
-    * Significant dates
+    * Significant dates (with project context ONLY, not just dates)
     - Include only keywords present in the source text
     - If there is No Insights Available in the insights output section, then state No Keywords Available
 
@@ -66,7 +67,8 @@ def derive_analytics(goal, reference_text, openai_api_key):
     - Keep insights focused on the specific goal mentioned
     - Avoid inferring information not explicitly stated
     - Extract keywords verbatim from the source text
-    - do not use headings or sub headings, just a bold text for the Insights key and Keywords key and rest of the text in plain text
+    - Do NOT use bullet points or lists, only plain text (even in keywords)
+    - Do NOT use headings or sub headings, just a bold text for the Insights key and Keywords key and rest of the text in plain text
 
     Here is the text excerpt: {reference_text}
     Here is the relevant goal text: {goal}"""
