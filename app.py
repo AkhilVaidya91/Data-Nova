@@ -40,8 +40,6 @@ def welcome_screen():
     st.subheader("Your GenAI-based research companion")
     
     st.markdown("""
-    ### Welcome to Digital Nova! 👋
-    
     Digital Nova is your all-in-one research companion powered by advanced AI technology. Our platform helps you gather, analyze, and understand data from various sources across the internet.
     
     #### What we offer:

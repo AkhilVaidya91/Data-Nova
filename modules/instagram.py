@@ -23,6 +23,7 @@ max_posts (calc)
 """
 
 MONGO_URI = os.getenv('MONGO_URI')
+MONGO_URI = "mongodb+srv://akhilvaidya22:qN2dxc1cpwD64TeI@digital-nova.cbbsn.mongodb.net/?retryWrites=true&w=majority&appName=digital-nova"
 client = MongoClient(MONGO_URI)
 db = client['digital_nova']
 output_files_collection = db['output_files']
@@ -198,14 +199,14 @@ def run(gemini_api_key, api_key, insta_ids, flag, max_posts, day, month, year, n
             row_data = (str(user_name), str(full_name), str(bio), int(followers), int(following), int(n_reels), int(posts), )
             account_df.loc[len(account_df)] = row_data
         excel_filename = f"instagram_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{account}_profile.xlsx"
-        save_path = f"{output_folder_path}/{excel_filename}"
-        profile_wb.save(save_path)
+        # save_path = f"{output_folder_path}/{excel_filename}"
+        # profile_wb.save(save_path)
 
         output_files_collection.insert_one({
             'username': username,
             'file_type': 'Instagram',
             'file_name': excel_filename,
-            'file_path': save_path,
+            # 'file_path': save_path,
             'timestamp': datetime.now()
         })
                         
@@ -301,14 +302,14 @@ def run(gemini_api_key, api_key, insta_ids, flag, max_posts, day, month, year, n
         list_of_posts_dataframes.append(posts_df)
         list_of_account_dataframes.append(account_df)
         excel_filename_2 = f"instagram_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{account}_posts.xlsx"
-        save_path = f"{output_folder_path}/{excel_filename_2}"
-        wb.save(save_path)
+        # save_path = f"{output_folder_path}/{excel_filename_2}"
+        # wb.save(save_path)
 
         output_files_collection.insert_one({
             'username': username,
             'file_type': 'Instagram',
             'file_name': excel_filename_2,
-            'file_path': save_path,
+            # 'file_path': save_path,
             'timestamp': datetime.now()
         })
     

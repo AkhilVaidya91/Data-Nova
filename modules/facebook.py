@@ -13,6 +13,7 @@ from dateutil.relativedelta import relativedelta
 from pymongo import MongoClient
 
 MONGO_URI = os.getenv('MONGO_URI')
+MONGO_URI = "mongodb+srv://akhilvaidya22:qN2dxc1cpwD64TeI@digital-nova.cbbsn.mongodb.net/?retryWrites=true&w=majority&appName=digital-nova"
 client = MongoClient(MONGO_URI)
 db = client['digital_nova']
 output_files_collection = db['output_files']
@@ -49,6 +50,10 @@ def setup_profile(api_key):
 
 
 def get_post_text(post_url, api_key):
+    if post_url is None:
+        return None
+    if api_key is None:
+        return None
     genai.configure(api_key=api_key)
     response = requests.get(post_url)
     image_data = response.content
@@ -141,14 +146,14 @@ def run(gemini_api_key, api_key, facebook_url, start_date, end_date, max_posts, 
         row_data = (str(categories_str), str(info_str), int(likes), int(num_posts), str(title), str(address), str(pageName), str(page_url), str(phone))
         account_df.loc[len(account_df)] = row_data
     excel_filename = f"facebook_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{pageName}_profile.xlsx"
-    save_path = f"{output_folder_path}/{excel_filename}"
-    profile_wb.save(save_path)
+    # save_path = f"{output_folder_path}/{excel_filename}"
+    # profile_wb.save(save_path)
 
     output_files_collection.insert_one({
         'username': username,
         'file_type': 'Facebook-Profile',
         'file_name': excel_filename,
-        'file_path': save_path,
+        # 'file_path': save_path,
         'timestamp': datetime.now()
     })
                     
@@ -222,14 +227,14 @@ def run(gemini_api_key, api_key, facebook_url, start_date, end_date, max_posts, 
         row += 1
     
     excel_filename_2 = f"facebook_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{pageName}_posts.xlsx"
-    save_path = f"{output_folder_path}/{excel_filename_2}"
-    wb.save(save_path)
+    # save_path = f"{output_folder_path}/{excel_filename_2}"
+    # wb.save(save_path)
 
     output_files_collection.insert_one({
         'username': username,
         'file_type': 'Facebook-Poosts',
         'file_name': excel_filename_2,
-        'file_path': save_path,
+        # 'file_path': save_path,
         'timestamp': datetime.now()
     })
     

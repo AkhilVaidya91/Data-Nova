@@ -16,6 +16,7 @@ from pymongo import MongoClient
 
 
 MONGO_URI = os.getenv('MONGO_URI')
+MONGO_URI = "mongodb+srv://akhilvaidya22:qN2dxc1cpwD64TeI@digital-nova.cbbsn.mongodb.net/?retryWrites=true&w=majority&appName=digital-nova"
 client = MongoClient(MONGO_URI)
 db = client['digital_nova']
 output_files_collection = db['output_files']
@@ -199,14 +200,15 @@ def run(api_key, gemini_api_key, perplexity_api_key, query, max_articles, start_
         df.loc[len(df)] = row_values
         row += 1
     excel_filename = f"google_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{query}_news.xlsx"
-    save_path = f"{output_folder_path}/{excel_filename}"
-    wb.save(save_path)
+    # save_path = f"{output_folder_path}/{excel_filename}"
+    # wb.save(save_path)
+
 
     output_files_collection.insert_one({
     'username': username,
     'file_type': 'Instagram',
     'file_name': excel_filename,
-    'file_path': save_path,
+    # 'file_path': save_path,
     'timestamp': datetime.now()
     })
     return df, excel_filename

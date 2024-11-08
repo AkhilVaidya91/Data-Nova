@@ -12,6 +12,7 @@ from pymongo import MongoClient
 import os
 
 MONGO_URI = os.getenv('MONGO_URI')
+MONGO_URI = "mongodb+srv://akhilvaidya22:qN2dxc1cpwD64TeI@digital-nova.cbbsn.mongodb.net/?retryWrites=true&w=majority&appName=digital-nova"
 client = MongoClient(MONGO_URI)
 db = client['digital_nova']
 output_files_collection = db['output_files']
@@ -91,15 +92,15 @@ def run(api_key, product_urls, output_folder_path, username, max_reviews=100):
         excel_filename = f"amazon_{num}_reviews.xlsx"
         ## filename also includes timestamp
         excel_filename = f"{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}_{excel_filename}"
-        save_path = f"{output_folder_path}/{excel_filename}"
-        wb.save(save_path)
+        # save_path = f"{output_folder_path}/{excel_filename}"
+        # wb.save(save_path)
         num = num + 1
 
         output_files_collection.insert_one({
             'username': username,
             'file_type': 'amazon_reviews',
             'filename': excel_filename,
-            'path': save_path,
+            # 'path': save_path,
             'created_at': datetime.now()
         })
     return df, excel_filename

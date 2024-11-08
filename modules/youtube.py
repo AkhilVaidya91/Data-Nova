@@ -16,7 +16,7 @@ from pymongo import MongoClient
 # api_key = os.getenv('YT_API_KEY')
 youtube_api_key = None
 MONGO_URI = os.getenv('MONGO_URI')
-# MONGO_URI = "mongodb+srv://akhilvaidya22:qN2dxc1cpwD64TeI@digital-nova.cbbsn.mongodb.net/?retryWrites=true&w=majority&appName=digital-nova"
+MONGO_URI = "mongodb+srv://akhilvaidya22:qN2dxc1cpwD64TeI@digital-nova.cbbsn.mongodb.net/?retryWrites=true&w=majority&appName=digital-nova"
 client = MongoClient(MONGO_URI)
 db = client['digital_nova']
 output_files_collection = db['output_files']
@@ -208,15 +208,15 @@ def scrape_channel_videos_to_excel(channel_id, channel_name,max_vids,max_comment
     
     # Create the Excel file to write video data
     file_name = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{channel_name}_videos.xlsx"
-    excel_filename = f"{output_folder_path}/{file_name}"
-    df.to_excel(excel_filename, index=False)
+    # excel_filename = f"{output_folder_path}/{file_name}"
+    # df.to_excel(excel_filename, index=False)
 
     # Save the file path to the database
     output_files_collection.insert_one({
         'username': username,
         'file_type': 'YouTube_channel_videos',
         'file_name': file_name,
-        'file_path': excel_filename,
+        # 'file_path': excel_filename,
         'created_at': datetime.now()
     })
 
@@ -265,17 +265,17 @@ def save_channel_statistics_to_excel(channel_id, output_folder_path, username, y
 
     # Define the Excel file path
     file_name = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{channel_stats['Channel Name']}_statistics.xlsx"
-    save_path = os.path.join(output_folder_path, file_name)
+    # save_path = os.path.join(output_folder_path, file_name)
     
     # Save the data to an Excel file
-    df.to_excel(save_path, index=False)
+    # df.to_excel(save_path, index=False)
 
     # Save the file path to the database
     output_files_collection.insert_one({
         'username': username,
         'file_type': 'YouTube_channel_statistics',
         'file_name': file_name,
-        'file_path': save_path,
+        # 'file_path': save_path,
         'created_at': datetime.now()
     })
 

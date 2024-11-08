@@ -1,5 +1,6 @@
 import streamlit as st
 from pymongo import MongoClient
+from gridfs import GridFS
 import os
 import pandas as pd
 
@@ -13,6 +14,7 @@ users_collection = db['users']
 output_files_collection = db['output_files']
 corpus_collection = db['corpus']
 themes_collection = db['themes']
+fs = GridFS(db)
 
 def get_user_info(username):
     user = users_collection.find_one({'username': username})
@@ -104,16 +106,35 @@ def display_dashboard(username):
         output_files = get_user_output_files(username)
         if output_files:
             for file in output_files:
-                file_path = file['file_path']
+                # file_path = file['file_path']
                 file_name = file['file_name']
-                with open(file_path, "rb") as file_data:
-                    st.write(f"**{file_name}**")
-                    st.download_button(
-                        label="Download",
-                        data=file_data.read(),
-                        file_name=file_name,
-                        mime='application/octet-stream'
-                    )
+                # with open(file_path, "rb") as file_data:
+                #     st.write(f"**{file_name}**")
+                #     st.download_button(
+                #         label="Download",
+                #         data=file_data.read(),
+                #         file_name=file_name,
+                #         mime='application/octet-stream'
+                #     )
+                # if 'file_id' in file:  # Check if file_id exists in metadata
+                try:
+                    grid_file = fs.find_one({"filename": file_name})
+                    if grid_file:
+
+                        file_data = grid_file.read()
+                        
+                        st.write(f"**{file_name}**")
+                        st.download_button(
+                            label="Download",
+                            data=file_data,
+                            file_name=file_name,
+                            mime='application/octet-stream'
+                        )
+                    else:
+                        st.warning(f"File {file_name} not found in GridFS")
+                except Exception as e:
+                    st.error(f"Error retrieving file {file_name}: {str(e)}")
+
         else:
             st.write("No scraped files found.")
 

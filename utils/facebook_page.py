@@ -2,6 +2,8 @@ import streamlit as st
 import os
 from modules import facebook
 import zipfile
+from gridfs import GridFS
+from pymongo import MongoClient
 import io
 from datetime import datetime
 
@@ -18,6 +20,12 @@ def month_difference(date1_str, date2_str):
     return abs(month_diff)
 
 def facebook_page_loader(gemini_api_key, apify_api_key, op_path, username):
+    MONGO_URI = os.getenv('MONGO_URI')
+    MONGO_URI = "mongodb+srv://akhilvaidya22:qN2dxc1cpwD64TeI@digital-nova.cbbsn.mongodb.net/?retryWrites=true&w=majority&appName=digital-nova"
+
+    client = MongoClient(MONGO_URI)
+    db = client['digital_nova']  # Use your existing MongoDB connection
+    fs = GridFS(db)
     account_handles = []
     handle = st.text_input(f"Facebook account URL: ", key="facebook_account")
     
@@ -40,12 +48,45 @@ def facebook_page_loader(gemini_api_key, apify_api_key, op_path, username):
         st.dataframe(df, key="facebook_profile_df")
         st.write("Instagram account posts details.", key="facebook_posts")
         st.dataframe(df_posts, key="facebook_posts_df")
-        acc_file_path = os.path.join(op_path, acc_file)
-        post_file_path = os.path.join(op_path, post_file)
+
+        excel_buffer = io.BytesIO()
+        df.to_excel(excel_buffer, index=False)
+        excel_buffer.seek(0)
+        file_id_acc = fs.put(
+            excel_buffer.getvalue(),
+            filename=acc_file,
+            metadata={
+                'username': username,
+                'file_type': 'Facebook Account Details',
+                'timestamp': datetime.now()
+            }
+        )
+
+        excel_buffer = io.BytesIO()
+        df_posts.to_excel(excel_buffer, index=False)
+        excel_buffer.seek(0)
+        file_id_posts = fs.put(
+            excel_buffer.getvalue(),
+            filename=post_file,
+            metadata={
+                'username': username,
+                'file_type': 'Facebook Post Details',
+                'timestamp': datetime.now()
+            }
+        )
+        # acc_file_path = os.path.join(op_path, acc_file)
+        # post_file_path = os.path.join(op_path, post_file)
+
+        grid_file = fs.get(file_id_acc)
+        file_data_acc = grid_file.read()
+
+        grid_file = fs.get(file_id_posts)
+        file_data_posts = grid_file.read()
+
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, 'w') as zipf:
-            zipf.write(acc_file_path, os.path.basename(acc_file))
-            zipf.write(post_file_path, os.path.basename(post_file))
+            zipf.writestr(acc_file, file_data_acc)
+            zipf.writestr(post_file, file_data_posts)
 
         zip_buffer.seek(0)
 

@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from pymongo import MongoClient
 
 MONGO_URI = os.getenv('MONGO_URI')
+MONGO_URI = "mongodb+srv://akhilvaidya22:qN2dxc1cpwD64TeI@digital-nova.cbbsn.mongodb.net/?retryWrites=true&w=majority&appName=digital-nova"
 client = MongoClient(MONGO_URI)
 db = client['digital_nova']
 output_files_collection = db['output_files']
@@ -129,15 +130,15 @@ def run(apify_api_token, genai_api_key, company_name, num_accounts, accounts, nu
 
     # Save the DataFrame to an Excel file in the specified directory
     filename = f"twitter_{company_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_info.xlsx"
-    excel_filename = os.path.join(save_directory, filename)
-    df.to_excel(excel_filename, index=False)
+    # excel_filename = os.path.join(save_directory, filename)
+    # df.to_excel(excel_filename, index=False)
 
     # Save the output file details to the MongoDB collection
     output_files_collection.insert_one({
         'username': username,
         'file_type': 'twitter',
         'filename': filename,
-        'filepath': excel_filename,
+        # 'filepath': excel_filename,
         'timestamp': datetime.now(),
     })
     

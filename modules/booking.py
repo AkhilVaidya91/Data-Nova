@@ -14,6 +14,7 @@ import random
 from pymongo import MongoClient
 
 MONGO_URI = os.getenv('MONGO_URI')
+MONGO_URI = "mongodb+srv://akhilvaidya22:qN2dxc1cpwD64TeI@digital-nova.cbbsn.mongodb.net/?retryWrites=true&w=majority&appName=digital-nova"
 client = MongoClient(MONGO_URI)
 db = client['digital_nova']
 output_files_collection = db['output_files']
@@ -57,22 +58,34 @@ def run(api_key, links, max_posts, output_folder_path, username):
 
             user_name = item.get("userName")
             user_location = item.get("userLocation")
+            if user_location == None:
+                user_location = "NA"
             user_location = remove_comma(user_location)
             room_info = item.get("roomInfo")
+            if room_info == None:
+                room_info = "NA"
             room_info = remove_comma(room_info)
             stay_date = item.get("stayDate")
             stay_date = stay_date.split(" ")
             stay_month = stay_date[0]
             stay_year = stay_date[1]
             stay_length = item.get("stayLength")
+            if stay_length == None:
+                stay_length = "NA"
             stay_length = remove_comma(stay_length)
             review_title = item.get("reviewTitle")
+            if review_title == None:
+                review_title = "NA"
             review_title = remove_comma(review_title)
             rating = item.get("rating")
             review_text_parts = item.get("reviewTextParts")
             liked = review_text_parts.get("Liked")
+            if liked == None:
+                liked = "NA"
             liked = remove_comma(liked)
             disliked = review_text_parts.get("Disliked")
+            if disliked == None:
+                disliked = "NA"
             disliked = remove_comma(disliked)
             
 
@@ -95,14 +108,11 @@ def run(api_key, links, max_posts, output_folder_path, username):
         excel_filename = f"booking_{random_number}_reviews.xlsx"
         ## filename also includes timestamp
         excel_filename = f"booking_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{random_number}_reviews.xlsx"
-        save_path = f"{output_folder_path}/{excel_filename}"
-        wb.save(save_path)
 
         output_files_collection.insert_one({
             'username': username,
             'file_type': 'Booking.com Reviews',
             'file_name': excel_filename,
-            'file_path': save_path,
             'timestamp': datetime.now()
         })
     return df, excel_filename

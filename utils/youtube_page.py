@@ -2,13 +2,23 @@ import streamlit as st
 import os
 from modules import youtube
 import zipfile
+from gridfs import GridFS
+from pymongo import MongoClient
 import io
+from datetime import datetime
 
 def youtube_page_loader(op_path, username, youtube_key):
         channel_name = st.text_input("Enter the channel name: ", key="youtube_channel_name")
         max_videos = st.number_input("Max Videos", min_value=1, value=5, key="youtube_max_videos")
 
         if st.button("Analyze", key="youtube_analyze"):
+            MONGO_URI = os.getenv('MONGO_URI')
+            MONGO_URI = "mongodb+srv://akhilvaidya22:qN2dxc1cpwD64TeI@digital-nova.cbbsn.mongodb.net/?retryWrites=true&w=majority&appName=digital-nova"
+
+            client = MongoClient(MONGO_URI)
+            db = client['digital_nova']  # Use your existing MongoDB connection
+            fs = GridFS(db)
+
             channel_id = youtube.get_channel_id(channel_name, youtube_key)
             if channel_id:
                 df_channel_stats, stats_filename = youtube.save_channel_statistics_to_excel(channel_id, op_path, username, youtube_key)
@@ -18,13 +28,49 @@ def youtube_page_loader(op_path, username, youtube_key):
                 st.write("Channel Videos", key="youtube_channel_videos")
                 st.dataframe(df_video_stats, key="youtube_channel_videos_df")
 
-                stats_filename = os.path.join(op_path, stats_filename)
-                videos_filename = os.path.join(op_path, videos_filename)
+                excel_buffer = io.BytesIO()
+                df_channel_stats.to_excel(excel_buffer, index=False)
+                excel_buffer.seek(0)
+                file_id_channel = fs.put(
+                    excel_buffer.getvalue(),
+                    filename=stats_filename,
+                    metadata={
+                        'username': username,
+                        'file_type': 'YouTube Channel Statistics',
+                        'timestamp': datetime.now()
+                    }
+                )
+
+                excel_buffer = io.BytesIO()
+                df_video_stats.to_excel(excel_buffer, index=False)
+                excel_buffer.seek(0)
+                file_id_video = fs.put(
+                    excel_buffer.getvalue(),
+                    filename=videos_filename,
+                    metadata={
+                        'username': username,
+                        'file_type': 'YouTube Video Statistics',
+                        'timestamp': datetime.now()
+                    }
+                )
+
+                # booking_file_name = os.path.join(op_path, booking_file_name)
+
+                grid_file = fs.get(file_id_channel)
+                file_data_channel = grid_file.read()
+
+                grid_file = fs.get(file_id_video)
+                file_data_video = grid_file.read()
+
+                # stats_filename = os.path.join(op_path, stats_filename)
+                # videos_filename = os.path.join(op_path, videos_filename)
 
                 zip_buffer = io.BytesIO()
                 with zipfile.ZipFile(zip_buffer, 'w') as zipf:
-                    zipf.write(stats_filename, os.path.basename(stats_filename))
-                    zipf.write(videos_filename, os.path.basename(videos_filename))
+                    # zipf.write(stats_filename, os.path.basename(stats_filename))
+                    # zipf.write(videos_filename, os.path.basename(videos_filename))
+                    zipf.writestr(stats_filename, file_data_channel)
+                    zipf.writestr(videos_filename, file_data_video)
 
                 zip_buffer.seek(0)
 
