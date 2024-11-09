@@ -157,8 +157,8 @@ def store_vectors_mongodb(df, mongodb_uri, openai_api_key, theme_title):
     
     except Exception as e:
         raise Exception(f"Failed to store vectors in MongoDB: {e}")
-    finally:
-        client.close()
+    # finally:
+    #     client.close()
 
 def cosine_similarity(v1, v2):
     """Calculate cosine similarity between two vectors"""
@@ -198,8 +198,8 @@ def search_vectors(query_text, k, mongodb_uri, openai_api_key):
     
     except Exception as e:
         raise Exception(f"Failed to search vectors: {e}")
-    finally:
-        client.close()
+    # finally:
+    #     client.close()
 
 def process_pdf_and_create_vectors(file_path, file_name, openai_api_key, chunk_size=50):
     """
@@ -555,5 +555,5 @@ def themes_main(username):
                         
                 except Exception as e:
                     st.error(f"Error structuring documents: {e}")
-                finally:
-                    client.close()
+                # finally:
+                    # client.close()
