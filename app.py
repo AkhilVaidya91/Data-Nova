@@ -22,9 +22,13 @@ def check_hashes(password, hashed_text):
         return hashed_text
     return False
 
-def add_userdata(username, password):
+# def add_userdata(username, password):
+#     hashed_password = make_hashes(password)
+#     users_collection.insert_one({'username': username, 'password': hashed_password})
+
+def add_userdata(username, password, name, email, role, apify_api_key_ip, gemini_api_key_ip, openai_api_key_ip, perplexity_api_key_ip, youtube_api_key_ip):
     hashed_password = make_hashes(password)
-    users_collection.insert_one({'username': username, 'password': hashed_password})
+    users_collection.insert_one({'username': username, 'password': hashed_password, 'name': name, 'email': email, 'role': role, 'api_keys': {'apify': apify_api_key_ip, 'gemini': gemini_api_key_ip, 'openai': openai_api_key_ip, 'perplexity': perplexity_api_key_ip, 'YouTube': youtube_api_key_ip}})
 
 def login_user(username, password):
     hashed_password = make_hashes(password)
@@ -76,10 +80,19 @@ def sidebar_login_signup():
                 st.sidebar.warning("Incorrect Username/Password")
 
     elif choice == "SignUp":
-        new_user = st.sidebar.text_input("Username")
-        new_password = st.sidebar.text_input("Password", type='password')
+        name = st.sidebar.text_input("Full Name", key="name")
+        email = st.sidebar.text_input("Email ID", key="email")
+        role = st.sidebar.selectbox("Role", ["Student", "Researcher", "Professor", "Teaching Assistant"], key="role")
+        new_user = st.sidebar.text_input("Username" , key="new_user")
+        new_password = st.sidebar.text_input("Password", type='password' , key="new_password")
+        apify_api_key_ip = st.sidebar.text_input("Apify API Key", key="apify_api_key_ip")
+        gemini_api_key_ip = st.sidebar.text_input("Gemini API Key", key="gemini_api_key_ip")
+        openai_api_key_ip = st.sidebar.text_input("OpenAI API Key", key="openai_api_key_ip")
+        perplexity_api_key_ip = st.sidebar.text_input("Perplexity API Key", key="perplexity_api_key_ip")
+        youtube_api_key_ip = st.sidebar.text_input("YouTube API Key", key="youtube_api_key_ip")
         if st.sidebar.button("Signup"):
-            add_userdata(new_user, new_password)
+            # add_userdata(new_user, new_password)
+            add_userdata(new_user, new_password, name, email, role, apify_api_key_ip, gemini_api_key_ip, openai_api_key_ip, perplexity_api_key_ip, youtube_api_key_ip)
             st.sidebar.success("You have successfully created an account")
             st.sidebar.info("Go to Login Menu to login")
 

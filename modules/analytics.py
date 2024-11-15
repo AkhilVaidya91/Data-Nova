@@ -235,7 +235,7 @@ def analytics_page(username):
         themes_cursor = themes_collection.find({'username': username})
         theme_options = [theme['theme_title'] for theme in themes_cursor]
         if not theme_options:
-            st.warning("No themes found. Please create a theme first.")
+            st.warning("No themes found. Please create a theme first.", key="no_themes")
             return
 
         selected_theme = st.selectbox("Theme Selection", theme_options)

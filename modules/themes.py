@@ -327,6 +327,17 @@ def themes_main(username):
 
     with tab1:
         if perplexity_key:
+            st.info("""
+            **Theme Generation Guidelines**
+
+            When generating a theme, please include the following elements in your prompt:
+
+            - **Theme**: The main subject or overarching idea.
+            - **Subthemes**: Related topics that fall under the main theme.
+            - **Description**: Brief explanations for each subtheme.
+            - **Keywords**: Important terms associated with each subtheme.
+            - **Examples**: Illustrations or scenarios for clarity.
+            """)
             theme_name = st.text_input("Enter a theme name:")
             st.session_state.current_theme = theme_name
             topic = st.text_input("Enter a topic:")
@@ -419,6 +430,15 @@ def themes_main(username):
     # Vector Search Tab
     with tab2:
         st.subheader("Corpus Upload")
+        st.info("""
+        **Corpus Structuring Guidelines**
+
+        - **File Format**: Please upload your documents in **PDF format** for text parsing. If your documents are in Excel or other formats, kindly convert them to PDF before uploading.
+        - **Content Quality**: Ensure that your PDFs contain selectable text for accurate text extraction.
+        - **Naming Convention**: Use descriptive file names to help organize your corpus effectively.
+
+        *Note*: Properly structured corpora improve the performance of vector searches and theme analytics.
+        """)
         
         # Create uploads directory if it doesn't exist
         UPLOAD_DIR = "uploads"

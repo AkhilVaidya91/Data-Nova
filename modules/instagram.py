@@ -150,6 +150,7 @@ def run(gemini_api_key, api_key, insta_ids, flag, max_posts, day, month, year, n
     day = int(today_day)
     month = int(today_month)
     year = int(today_year)
+    flag_cpy = flag
     flag = "b"
     if flag == "b":
         month_cutoff = calculate_previous_date(num_month)

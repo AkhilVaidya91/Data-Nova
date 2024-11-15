@@ -110,7 +110,6 @@ def run(apify_api_key, gemini_api_key, query, max_posts, output_folder_path, use
                 image_url = image.get("url")
                 image_caption = get_post_text(image_url, gemini_api_key)
             
-                ["Platform", "Title", "Favourite Count", "Comment Count", "Media Type", "Media Content"]
                 ws.cell(row=row, column=1, value='Flickr')
                 ws.cell(row=row, column=2, value=str(title))
                 ws.cell(row=row, column=3, value=str(favs))

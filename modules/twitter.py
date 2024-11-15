@@ -97,7 +97,8 @@ def run(apify_api_token, genai_api_key, company_name, num_accounts, accounts, nu
         
         # Generate captions for each image and save them in the specified directory
         for img_url in images_array:
-            caption = get_post_text(img_url, genai_api_key, save_directory)
+            # caption = get_post_text(img_url, genai_api_key, save_directory)
+            caption = get_post_text(img_url, genai_api_key)
             captions.append(caption)
         
         # Append tweet details along with user data and image captions to the list

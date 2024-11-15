@@ -40,12 +40,20 @@ def update_api_key(username, api_name, api_key):
 
 def display_api_key_section(username, user_info):
     st.subheader("API Keys Management")
-    
+    st.info("""
+    To use all features of this application, please provide your API keys for the services below. You can obtain your API keys from the respective service providers:
+
+    - **Apify**: Obtain your API key from the [Apify Console](https://console.apify.com/account/integrations).
+    - **OpenAI**: Generate your API key at [OpenAI API Keys](https://platform.openai.com/account/api-keys).
+    - **Perplexity**: Visit [Perplexity AI](https://docs.perplexity.ai/guides/getting-started) to get your API key.
+    - **Gemini**: Retrieve your API key from your [Gemini account settings](https://aistudio.google.com/app/apikey).
+    - **YouTube**: Create an API key via the [Google Cloud Console](https://console.cloud.google.com/apis/credentials).
+    """)
     # Define the API services
     api_services = ['apify', 'openai', 'perplexity', 'gemini', 'YouTube']
     
     # Create columns for the API key management section
-    cols = st.columns([2, 1])
+    cols = st.columns([2, 2])
     
     with cols[0]:
         # Get existing API keys from user_info
@@ -95,6 +103,11 @@ def display_dashboard(username):
         # Add more user info if available
         if 'email' in user_info:
             st.write(f"**Email:** {user_info['email']}")
+        if 'full_name' in user_info:
+            st.write(f"**Full Name:** {user_info['full_name']}")
+        if 'role' in user_info:
+            st.write(f"**Role:** {user_info['role']}")
+
 
     with tab2:
         # API Keys
@@ -106,30 +119,22 @@ def display_dashboard(username):
         output_files = get_user_output_files(username)
         if output_files:
             for file in output_files:
-                # file_path = file['file_path']
                 file_name = file['file_name']
-                # with open(file_path, "rb") as file_data:
-                #     st.write(f"**{file_name}**")
-                #     st.download_button(
-                #         label="Download",
-                #         data=file_data.read(),
-                #         file_name=file_name,
-                #         mime='application/octet-stream'
-                #     )
-                # if 'file_id' in file:  # Check if file_id exists in metadata
                 try:
                     grid_file = fs.find_one({"filename": file_name})
                     if grid_file:
 
                         file_data = grid_file.read()
-                        
-                        st.write(f"**{file_name}**")
-                        st.download_button(
-                            label="Download",
-                            data=file_data,
-                            file_name=file_name,
-                            mime='application/octet-stream'
-                        )
+                        cols = st.columns([2, 2])
+                        with cols[0]:
+                            st.write(f"**{file_name}**")
+                        with cols[1]:
+                            st.download_button(
+                                label="Download",
+                                data=file_data,
+                                file_name=file_name,
+                                mime='application/octet-stream'
+                            )
                     else:
                         st.warning(f"File {file_name} not found in GridFS")
                 except Exception as e:
