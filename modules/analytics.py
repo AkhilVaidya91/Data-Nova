@@ -186,9 +186,6 @@ def comparative_analytics(username, theme_title, corpus_name, openai_api_key):
 
 # Streamlit page to display comparative analytics
 def analytics_page(username):
-    # st.title("Comparative Analytics")
-
-    # Fetch user's OpenAI API key from MongoDB
     user = users_collection.find_one({'username': username})
     if user:
         openai_api_key = user.get('api_keys', {}).get('openai', '')

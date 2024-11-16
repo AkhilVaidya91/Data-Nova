@@ -251,18 +251,19 @@ def structure_document_content(api_key, document_text, columns):
     """
     Structure a single document's content into the specified columns using OpenAI API
     """
+    # columns = str(columns)
     prompt = f"""Structure the following document content into a single row with these columns: {columns}
     The goals colums should contain the main theme goals that can be identified, keywords should list out atleast 8 keywords per goal.
     
     Document content: {document_text}
     Ensure that your response is extremely detailed and covers every single important point from the document. If it has names or dates or project names mentioned, ensure that they are included in the response.
-    Return only a JSON object with the specified columns as keys and appropriate content as values. DO NOT USE THE WORD JSON IN RESPONSE OR EVEN BACKTICS ```. Start and end your response with curley beackets. 
+    Return only a list of JSON object with the specified columns as keys and appropriate content as values. Note that this JSON will be passed on to pandas to convert to a dataframe, so create the dataframe accordingly. DO NOT USE THE WORD JSON IN RESPONSE OR EVEN BACKTICS ```. Start and end your response with curley beackets. 
     Ensure the response can be directly parsed as JSON without any additional text."""
     
     messages = [
         {
             "role": "system",
-            "content": "You are an AI that structures document content into specific columns for data analysis."
+            "content": "You are an AI that structures document content into specific columns for data analysis. You MUST respond in a JSON format only, and the JSON should be directly convertible to a pandas DataFrame."
         },
         {
             "role": "user",
@@ -314,7 +315,7 @@ def themes_main(username):
     if "current_theme" not in st.session_state:
         st.session_state.current_theme = ""
     
-    tab1, tab2 = st.tabs(["Theme Generation", "Corpus Upload"])
+    tab1, tab2, tab3 = st.tabs(["Theme Generation", "Corpus Upload", "Doc Theme Generation"])
 
     user = db['users']
     current_user = user.find_one({'username': username})
@@ -577,3 +578,71 @@ def themes_main(username):
                     st.error(f"Error structuring documents: {e}")
                 # finally:
                     # client.close()
+    with tab3:
+        st.subheader("Document Theme Generation")
+        st.info("""
+        **Document Theme Generation Guidelines**
+
+        - **File Format**: Please upload your documents in **PDF format** for text parsing. If your documents are in Excel or other formats, kindly convert them to PDF before uploading.
+        - **Content Quality**: Ensure that your PDFs contain selectable text for accurate text extraction.
+        - **Naming Convention**: Use descriptive file names to help organize your corpus effectively.
+        """)
+        
+        # Theme name input
+        theme_name = st.text_input("Enter a theme name:", key="theme_name_pdf")
+
+        # PDF file uploader
+        uploaded_file = st.file_uploader(
+            "Upload a PDF file", 
+            type=["pdf"],
+            accept_multiple_files=False
+        )
+
+        if theme_name and uploaded_file:
+            print(1)
+            if openai_key:
+                try:
+                    # Save the uploaded PDF to a temporary location
+                    temp_pdf_path = os.path.join(UPLOAD_DIR, uploaded_file.name)
+                    # if not os.path.exists("temp"):
+                    #     os.makedirs("temp")
+                    with open(temp_pdf_path, "wb") as f:
+                        f.write(uploaded_file.getbuffer())
+                    
+                    document_text = read_pdf_content(temp_pdf_path)
+
+                    if document_text:
+                        # Define the columns for structuring
+                        columns = "Goals, Description, Keywords, Examples, Reference Links"
+                        
+                        # Structure the content using OpenAI API
+                        structured_data = structure_data(openai_key, document_text, columns)
+
+                        if structured_data:
+                            # Display the structured data
+                            st.write("**Structured Theme Data:**")
+
+                            df = pd.DataFrame(structured_data)
+                            st.dataframe(df)
+                            
+                            # Store theme in MongoDB
+                            theme_doc = {
+                                'username': username,
+                                'theme_title': theme_name,
+                                'structured_data': structured_data,
+                                'timestamp': datetime.now()
+                            }
+                            themes_collection.insert_one(theme_doc)
+                            
+                            st.success("Theme generated and saved successfully.")
+                        else:
+                            st.error("Failed to structure document content.")
+                    else:
+                        st.error("No text extracted from the PDF. Ensure the PDF contains selectable text.")
+                    
+                    # Clean up temporary file
+                    os.remove(temp_pdf_path)
+                except Exception as e:
+                    st.error(f"An error occurred: {e}")
+            else:
+                st.warning("Please set your OpenAI API key in your profile settings.")
