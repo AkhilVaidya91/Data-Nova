@@ -8,6 +8,21 @@ import io
 from datetime import datetime
 
 def youtube_page_loader(op_path, username, youtube_key):
+        st.info(
+            """
+            **YouTube Channel Scraper**  
+            This tool allows you to scrape and analyze data from a YouTube channel. You can extract various details including video information, transcripts, comments, and channel statistics. 
+
+            **Features:**
+            - Extract video details such as title, views, likes, comments, duration, and more.
+            - Fetch transcripts (if available) for videos in English or other languages.
+
+            **Prerequisites:**
+            - A valid YouTube API key to access YouTube data.
+            - Ensure you have enabled the YouTube API in your Google Cloud Console.
+            """
+        )
+
         channel_name = st.text_input("Enter the channel name: ", key="youtube_channel_name")
         max_videos = st.number_input("Max Videos", min_value=1, value=5, key="youtube_max_videos")
 

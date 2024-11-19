@@ -9,6 +9,23 @@ from datetime import datetime
 
 def instagram_page_loader(gemini_api_key, apify_api_key, op_path, username):
     account_handles = []
+    st.info(
+        """
+        **Scraping Platform Overview:**
+        - This platform collects and organizes data from social media platforms, focusing on Instagram posts and profiles, for analysis and insights.
+        - It allows users to scrape posts based on specific hashtags, date ranges, or public accounts while generating captions using AI.
+        - Outputs are saved in structured Excel files and logged in a MongoDB database for easy retrieval.
+
+        **Required Apify Actors:**
+        - **Instagram Profile Scraper:** `apify/instagram-profile-scraper`
+        - **Instagram Post Scraper:** `apify/instagram-scraper`
+
+        **Usage Notes:**
+        - Select date ranges and max post limits to control the data volume.
+        - Generated Excel files will include captions, engagement metrics, and AI-generated image descriptions.
+        """
+    )
+
     handle = st.text_input(f"Instagram account handle: ", key="instagram_handle")
     account_handles.append(handle)
     

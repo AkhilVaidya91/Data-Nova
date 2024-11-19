@@ -10,7 +10,7 @@ pinned: false
 license: mit
 ---
 
-# Data-Nova: 📊
+# 📊 Data-Nova
 ## Data Mining, Structuring and LLM Analytics
 
 A comprehensive application for data collection, theme generation, data structuring, and RAG-based analytics. This application leverages various APIs and services to scrape data from multiple platforms, process and analyze the data, and provide insightful analytics through an intuitive dashboard.

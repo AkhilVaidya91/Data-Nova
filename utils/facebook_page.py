@@ -27,6 +27,19 @@ def facebook_page_loader(gemini_api_key, apify_api_key, op_path, username):
     db = client['digital_nova']  # Use your existing MongoDB connection
     fs = GridFS(db)
     account_handles = []
+    st.info("""
+    ### Social Media Data Scraping Platform
+
+    This platform enables users to scrape and process Facebook page data, including profile details and post insights. It utilizes **Apify Actors** for data extraction:
+    - **apify/facebook-pages-scraper**: Extracts profile-related information such as categories, likes, posts, address, and contact details.
+    - **apify/facebook-posts-scraper**: Collects detailed post data, including likes, comments, shares, post text, and image captions.
+
+    ### Key Features:
+    - Generates descriptive captions for post images using OpenAI Gemini API.
+    - Stores extracted data in MongoDB for easy tracking and reusability.
+    - Outputs results in structured Excel files for both profile and posts.
+    """)
+
     handle = st.text_input(f"Facebook account URL: ", key="facebook_account")
     
     max_posts = st.number_input("Max Posts Per Month", min_value=1, value=5, key="facebook_max_posts")

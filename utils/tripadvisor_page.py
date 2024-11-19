@@ -8,6 +8,14 @@ import io
 from datetime import datetime
 
 def tripadvisor_page_loader(gemini_api_key, apify_api_key, op_path, username):
+    st.info("""
+    **TripAdvisor Hotel Reviews Scraping Platform**  
+    This platform allows you to scrape hotel reviews and related metadata from TripAdvisor efficiently.  
+    - **Purpose**: Extract reviews with details like ratings, dates, reviewer info, helpful votes, captions for attached images (via Gemini API), and location metadata for comprehensive analysis.  
+    - **Required Apify Actor**: Enable the actor **`maxcopell/tripadvisor-reviews`** in your Apify Console to fetch review data.   
+
+    """)
+
     num_reviews = st.number_input("Number of reviews", min_value=5, value=5, key="tripadvisor_num_reviews")
     link = st.text_input(f"Tripadvisor property URL: ", key="tripadvisor_link")
     links = []

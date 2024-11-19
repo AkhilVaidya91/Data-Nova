@@ -8,6 +8,20 @@ import io
 from datetime import datetime
 
 def twitter_page_loader(gemini_api_key, apify_api_key, op_path, username):
+    st.info("""
+    **AI-Powered Social Media Scraping Platform**
+
+    This platform allows users to scrape and analyze social media data with enhanced insights. 
+
+    - **Primary Purpose**: Extract tweets and associated user data (e.g., likes, replies, hashtags, user profiles) and generate descriptive captions for any images using Google's Gemini Generative AI model.
+
+    - **Required Apify Actor**: To enable this platform, ensure you have the **"2s3kSMq7tpuC3bI6M" Twitter scraper actor** added to your Apify console. This actor extracts tweets based on search queries, accounts, or hashtags.
+
+    - **Features**:
+    1. Scrapes tweet data including user details, hashtags, and engagement metrics.
+    2. Processes images from tweets and generates detailed captions using Gemini API.
+    3. Saves results in structured formats like Excel and logs file metadata into MongoDB.
+    """)
     company_name = st.text_input("Enter the company name: ", key="twitter_company_name")
     account = st.text_input("Enter account username: ", key="twitter_account")
     account = [account]

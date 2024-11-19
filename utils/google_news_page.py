@@ -8,6 +8,17 @@ import io
 from datetime import datetime
 
 def google_news_page_loader(apify_api_key, gemini_api_key, perplexity_api_key, op_path, username):
+    st.info("""
+    ### About the Scraping Platform
+
+    This platform is designed for data mining from multiple sources, focusing on **Google News scraping**. It allows users to extract headlines, article content, publication details, and even generate descriptive captions for associated images.
+
+    Please enable the **Google News Scraper Actor** (`lhotanova/google-news-scraper`) on your **Apify Console**.
+    Uses Gemini API for image captioning and Perplexity AI for content extraction.
+
+    The data is stored in MongoDB and optionally exported as Excel files for further analysis.
+    """)
+
     query = st.text_input("Enter the query: ", key="google_news_query")
     start_date = st.date_input('Enter the start date (older date)', key="google_news_start_date")
     end_date = st.date_input('Enter the end date (new date)', key="google_news_end_date")

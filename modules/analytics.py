@@ -197,6 +197,11 @@ def analytics_page(username):
         return
 
     # Select theme and corpus
+    st.info(
+    "This page allows you to analyze and compare multiple corporate reports against specific themes. "
+    "Select a theme and a corpus to uncover insights, and similarities."
+    )
+
 
     tab1, tab2 = st.tabs(["Document Analytics", "Theme Analytics"])
 

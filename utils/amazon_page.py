@@ -14,6 +14,15 @@ def amazon_page_loader(apify_api_key, op_path, username):
     client = MongoClient(MONGO_URI)
     db = client['digital_nova']  # Use your existing MongoDB connection
     fs = GridFS(db)
+    st.info("""
+    ### Amazon Reviews Scraper Platform
+
+    This platform is designed to scrape **Amazon product reviews** using the **Junglee/Amazon Reviews Scraper** actor from Apify. The tool extracts review details such as rating, title, reactions, country, date, description, and product variant, and organizes them into an Excel file. 
+
+    #### Prerequisites:
+    1. **Apify API Key**: Generate and provide your Apify API key in the application dashboard.
+    2. **Apify Actor**: Ensure the **Junglee/Amazon Reviews Scraper** actor is enabled in your Apify Console.
+    """)
 
     num_reviews = st.number_input("Number of reviews", min_value=5, value=5, key="amazon_num_reviews")
     link = st.text_input(f"Amazon Product URL: ", key="amazon_link")

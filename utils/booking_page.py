@@ -8,6 +8,18 @@ import io
 from datetime import datetime
 
 def booking_page_loader(apify_api_key, op_path, username):
+
+    st.info("""
+    This platform is designed to scrape hotel reviews from **Booking.com**. It extracts detailed user reviews, including reviewer names, locations, stay details, ratings, and comments about likes and dislikes. The data is then structured into an Excel file for further analysis or reporting.
+
+    #### Required Apify Actor
+    To use this tool, ensure the **"voyager/booking-reviews-scraper"** actor is enabled in your **Apify Console**. This actor handles the scraping logic for extracting reviews from Booking.com.
+
+    #### Key Features
+    - Scrapes hotel reviews including user details, stay information, ratings, and review comments.
+    - Automatically formats the scraped data into an Excel file for easy access.
+    """)
+
     num_reviews = st.number_input("Number of reviews", min_value=5, value=5, key="booking_num_reviews")
     link = st.text_input(f"Booking.com property URL: ", key="booking_link")
     links = []
