@@ -206,7 +206,7 @@ def run(api_key, gemini_api_key, perplexity_api_key, query, max_articles, start_
 
     output_files_collection.insert_one({
     'username': username,
-    'file_type': 'Instagram',
+    'file_type': 'Google News',
     'file_name': excel_filename,
     # 'file_path': save_path,
     'timestamp': datetime.now()

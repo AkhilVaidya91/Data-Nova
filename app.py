@@ -4,7 +4,7 @@ import os
 import hashlib
 from pymongo import MongoClient
 from modules import themes, dashboard, analytics
-from utils import instagram_page, tripadvisor_page, website_page, facebook_page, amazon_page, booking_page, google_news_page, youtube_page, twitter_page, flickr_page
+from utils import instagram_page, tripadvisor_page, website_page, facebook_page, amazon_page, booking_page, google_news_page, youtube_page, twitter_page, flickr_page, google_reviews_page
 
 MONGO_URI = os.getenv('MONGO_URI')
 MONGO_URI = "mongodb+srv://akhilvaidya22:qN2dxc1cpwD64TeI@digital-nova.cbbsn.mongodb.net/?retryWrites=true&w=majority&appName=digital-nova"
@@ -187,7 +187,7 @@ def main_app():
 
                 elif platform == "Google Reviews":
                     st.warning("This feature is currently disabled for development")
-                    # google_reviews_page.google_reviews_page_loader(gemini_api_key, apify_api_key, op_path
+                    google_reviews_page.google_reviews_page_loader(gemini_api_key, apify_api_key, op_path, st.session_state.username)
     
     elif active_tab == "Theme Generation":
         st.session_state.active_tab = "Theme Generation"
