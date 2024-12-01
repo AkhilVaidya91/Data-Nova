@@ -38,9 +38,9 @@ def youtube_page_loader(op_path, username, youtube_key):
             if channel_id:
                 df_channel_stats, stats_filename = youtube.save_channel_statistics_to_excel(channel_id, op_path, username, youtube_key)
                 df_video_stats, videos_filename = youtube.scrape_channel_videos_to_excel(channel_id, channel_name,max_videos,3, op_path, username, youtube_key)
-                st.write("Channel Statistics", key="youtube_channel_stats")
+                st.write("Channel Statistics")
                 st.dataframe(df_channel_stats, key="youtube_channel_stats_df")
-                st.write("Channel Videos", key="youtube_channel_videos")
+                st.write("Channel Videos")
                 st.dataframe(df_video_stats, key="youtube_channel_videos_df")
 
                 excel_buffer = io.BytesIO()

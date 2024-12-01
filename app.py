@@ -40,64 +40,71 @@ def view_all_users():
     return list(users)
 
 def welcome_screen():
-    st.title("Digital Nova")
+    st.title("🚀 Digital Nova")
     st.subheader("Your GenAI-based research companion")
     
     st.markdown("""
     Digital Nova is your all-in-one research companion powered by advanced AI technology. Our platform helps you gather, analyze, and understand data from various sources across the internet.
-    
+
     #### What we offer:
-    
+
     🔍 **Multi-Platform Data Collection**
-    - Social Media (Instagram, YouTube, Twitter, Flickr, Facebook)
-    - Customer Reviews (Amazon, TripAdvisor, Booking.com)
-    - News Articles (Google News)
-    - Custom Website Scraping
+    - 📸 Social Media (Instagram, YouTube, Twitter, Flickr, Facebook)
+    - 💬 Customer Reviews (Amazon, TripAdvisor, Booking.com)
+    - 📰 News Articles (Google News)
+
+    💡 **Theme Generation and Data Structuring**
+    - 🤖 Generate chat-based themes using **Perplexity**.
+    - 📊 Structure large document corpora into easily digestible tables using **OpenAI**.
+
+    📈 **Corpus Analytics**
+    - 🔎 Perform comparative and correlation analytics on structured themes and documents.
+    - 🧩 Discover connections and insights from themes, sub-themes, and structured corpora.
 
     #### Get Started
-    Please login or create an account using the sidebar to access these powerful features and begin your research journey!
-    
+    👉 Please login or create an account using the sidebar to access these powerful features and begin your research journey!
+
     ---
     """)
 
+
 # Login/Signup sidebar
 def sidebar_login_signup():
-    st.sidebar.title("Digital Nova")
-    menu = ["Login", "SignUp"]
+    st.sidebar.title("🚀 Digital Nova")
+    menu = ["🔐 Login", "📝 SignUp"]
     choice = st.sidebar.selectbox("Menu", menu)
 
-    if choice == "Login":
-        username = st.sidebar.text_input("User Name")
-        password = st.sidebar.text_input("Password", type='password')
-        if st.sidebar.button("Login"):
+    if choice == "🔐 Login":
+        username = st.sidebar.text_input("👤 User Name")
+        password = st.sidebar.text_input("🔑 Password", type='password')
+        if st.sidebar.button("🚪 Login"):
             result = login_user(username, password)
             if result:
-                st.sidebar.success(f"Logged In as {username}")
+                st.sidebar.success(f"✅ Logged In as {username}")
                 st.session_state.logged_in = True
                 st.session_state.username = username
-                st.session_state.active_tab = "Data Scraping"
+                st.session_state.active_tab = "📊 Data Scraping"
             else:
-                st.sidebar.warning("Incorrect Username/Password")
+                st.sidebar.warning("❌ Incorrect Username/Password")
 
-    elif choice == "SignUp":
-        name = st.sidebar.text_input("Full Name", key="name")
-        email = st.sidebar.text_input("Email ID", key="email")
-        role = st.sidebar.selectbox("Role", ["Student", "Researcher", "Professor", "Teaching Assistant"], key="role")
-        new_user = st.sidebar.text_input("Username" , key="new_user")
-        new_password = st.sidebar.text_input("Password", type='password' , key="new_password")
-        apify_api_key_ip = st.sidebar.text_input("Apify API Key", key="apify_api_key_ip")
-        gemini_api_key_ip = st.sidebar.text_input("Gemini API Key", key="gemini_api_key_ip")
-        openai_api_key_ip = st.sidebar.text_input("OpenAI API Key", key="openai_api_key_ip")
-        perplexity_api_key_ip = st.sidebar.text_input("Perplexity API Key", key="perplexity_api_key_ip")
-        youtube_api_key_ip = st.sidebar.text_input("YouTube API Key", key="youtube_api_key_ip")
-        if st.sidebar.button("Signup"):
-            # add_userdata(new_user, new_password)
+    elif choice == "📝 SignUp":
+        name = st.sidebar.text_input("👤 Full Name", key="name")
+        email = st.sidebar.text_input("📧 Email ID", key="email")
+        role = st.sidebar.selectbox("🎓 Role", ["👩‍🎓 Student", "🔬 Researcher", "👨‍🏫 Professor", "👥 Teaching Assistant"], key="role")
+        new_user = st.sidebar.text_input("👤 Username" , key="new_user")
+        new_password = st.sidebar.text_input("🔑 Password", type='password' , key="new_password")
+        apify_api_key_ip = st.sidebar.text_input("🔑 Apify API Key", key="apify_api_key_ip")
+        gemini_api_key_ip = st.sidebar.text_input("🔑 Gemini API Key", key="gemini_api_key_ip")
+        openai_api_key_ip = st.sidebar.text_input("🔑 OpenAI API Key", key="openai_api_key_ip")
+        perplexity_api_key_ip = st.sidebar.text_input("🔑 Perplexity API Key", key="perplexity_api_key_ip")
+        youtube_api_key_ip = st.sidebar.text_input("🔑 YouTube API Key", key="youtube_api_key_ip")
+        if st.sidebar.button("📩 Signup"):
             add_userdata(new_user, new_password, name, email, role, apify_api_key_ip, gemini_api_key_ip, openai_api_key_ip, perplexity_api_key_ip, youtube_api_key_ip)
-            st.sidebar.success("You have successfully created an account")
-            st.sidebar.info("Go to Login Menu to login")
+            st.sidebar.success("✅ You have successfully created an account")
+            st.sidebar.info("👉 Go to Login Menu to login")
 
 def main_app():
-    st.title("Digital Nova")
+    st.title("🚀 Digital Nova")
     st.subheader("Your GenAI-based research companion")
     op_path = os.getenv('OP_PATH', 'output')
 
@@ -114,36 +121,36 @@ def main_app():
 
     if not os.path.exists(op_path):
         os.makedirs(op_path)
-    tabs = ["Data Scraping", "Theme Generation", "Analytics", "Dashboard"]
-    active_tab = st.sidebar.selectbox("Select Tab", tabs, index=tabs.index(st.session_state.get('active_tab', "Data Scraping")))
-    if active_tab == "Data Scraping":
-        st.session_state.active_tab = "Data Scraping"
+    tabs = ["📊 Data Scraping", "🎨 Theme Generation (reference master)", "📈 Analytics", "🗂️ Dashboard"]
+    active_tab = st.sidebar.selectbox("Select Tab", tabs, index=tabs.index(st.session_state.get('active_tab', "📊 Data Scraping")))
+    if active_tab == "📊 Data Scraping":
+        st.session_state.active_tab = "📊 Data Scraping"
 
         ## check if user has Aipfy API key
         if not apify_api_key:
-            st.warning("Please add your Apify API key in the sidebar to proceed.")
+            st.warning("🚫 Please add your Apify API key in the sidebar to proceed.")
             return
         
         if not gemini_api_key:
-            st.warning("Please add your Gemini API key in the sidebar to proceed.")
+            st.warning("🚫 Please add your Gemini API key in the sidebar to proceed.")
             return
 
-        categories = ["Social Media", "e-WOM", "News", "Website"]
+        categories = ["📱 Social Media", "💬 e-WOM", "📰 News", "🌐 Website"]
         category_tabs = st.tabs(categories)
         # category = st.selectbox("Select Category", ["Social Media", "e-WOM", "News", "Website"])
         for category, tab in zip(categories, category_tabs):
             with tab:
-                if category == "Social Media":
+                if category == "📱 Social Media":
                     platform = st.selectbox("Platform Selection", ["Instagram", "YouTube", "Twitter", "Flickr", "Facebook"])
-                elif category == "e-WOM":
+                elif category == "💬 e-WOM":
                     category = st.selectbox("Select e-WOM Category", ["e-Commerce Product reviews", "Travel/Booking aggregators"])
                     if category == "e-Commerce Product reviews":
                         platform = st.selectbox("Platform Selection", ["Amazon Product Reviews", "Google Reviews"])
                     elif category == "Travel/Booking aggregators":
                         platform = st.selectbox("Platform Selection", ["TripAdvisor reviews", "Booking.com reviews"])
-                elif category == "News":
+                elif category == "📰 News":
                     platform = st.selectbox("Platform Selection", ["Google News"])
-                elif category == "Website":
+                elif category == "🌐 Website":
                     platform = st.selectbox("Platform Selection", ["Scrape website with AI"])
 
                 if platform == "Instagram":
@@ -186,19 +193,18 @@ def main_app():
                     facebook_page.facebook_page_loader(gemini_api_key, apify_api_key, op_path, st.session_state.username)
 
                 elif platform == "Google Reviews":
-                    st.warning("This feature is currently disabled for development")
                     google_reviews_page.google_reviews_page_loader(gemini_api_key, apify_api_key, op_path, st.session_state.username)
     
-    elif active_tab == "Theme Generation":
-        st.session_state.active_tab = "Theme Generation"
+    elif active_tab == "🎨 Theme Generation (reference master)":
+        st.session_state.active_tab = "🎨 Theme Generation (reference master)"
         themes.themes_main(st.session_state.username)
 
-    elif active_tab == "Analytics":
-        st.session_state.active_tab = "Analytics"
+    elif active_tab == "📈 Analytics":
+        st.session_state.active_tab = "📈 Analytics"
         analytics.analytics_page(st.session_state.username)
 
-    elif active_tab == "Dashboard":
-        st.session_state.active_tab = "Dashboard"
+    elif active_tab == "🗂️ Dashboard":
+        st.session_state.active_tab = "🗂️ Dashboard"
         dashboard.dashboard()
 
 

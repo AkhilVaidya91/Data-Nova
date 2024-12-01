@@ -28,13 +28,13 @@ def facebook_page_loader(gemini_api_key, apify_api_key, op_path, username):
     fs = GridFS(db)
     account_handles = []
     st.info("""
-    ### Social Media Data Scraping Platform
+    **Social Media Data Scraping Platform**
 
     This platform enables users to scrape and process Facebook page data, including profile details and post insights. It utilizes **Apify Actors** for data extraction:
     - **apify/facebook-pages-scraper**: Extracts profile-related information such as categories, likes, posts, address, and contact details.
     - **apify/facebook-posts-scraper**: Collects detailed post data, including likes, comments, shares, post text, and image captions.
 
-    ### Key Features:
+    **Key Features:**
     - Generates descriptive captions for post images using OpenAI Gemini API.
     - Stores extracted data in MongoDB for easy tracking and reusability.
     - Outputs results in structured Excel files for both profile and posts.

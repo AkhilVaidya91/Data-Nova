@@ -14,6 +14,7 @@ import numpy as np
 from numpy.linalg import norm
 import PyPDF2
 from io import BytesIO
+import base64
 
 
 MONGO_URI = os.getenv('MONGO_URI')
@@ -282,6 +283,134 @@ def structure_document_content(api_key, document_text, columns):
     except Exception as e:
         st.error(f"Failed to structure document content: {e}")
         return None
+    
+def csv_analytics(api_key, user_prompt, column_names, selected_column, dataframe):
+    """
+    Analyze a selected column in a dataframe using an LLM and generate new columns based on the analysis.
+
+    Parameters:
+    - api_key (str): OpenAI API key.
+    - user_prompt (str): The user's prompt or specific analytical requirements.
+    - column_names (str): Comma-separated string of new column names to be generated.
+    - selected_column (str): The name of the column in the dataframe to analyze.
+    - dataframe (pd.DataFrame): The pandas DataFrame containing the data.
+
+    Returns:
+    - pd.DataFrame: A new DataFrame with the generated columns appended.
+    """
+
+    # Prepare the list of new columns
+    new_columns = [col.strip() for col in column_names.split(",")]
+
+    # Initialize a list to store the results
+    results = []
+
+    # Iterate over each row in the selected column
+    for index, row in dataframe.iterrows():
+        text_to_analyze = str(row[selected_column])
+
+        # Construct the prompt using the provided template
+        # Input Parameters
+        user_prompt_input = user_prompt
+        research_paper_text = text_to_analyze
+        paper_section = selected_column
+        required_output_columns = new_columns
+
+        # Assemble the detailed prompt
+        prompt = f"""
+Perform a detailed, systematic analysis of the following section of a research paper, extracting key insights based on the user's requirements.
+
+User Prompt: {user_prompt_input}
+Research Paper Text: {research_paper_text}
+Paper Section: {paper_section}
+Required Output Columns: {required_output_columns}
+
+You are to analyze the 'Research Paper Text' based on the 'User Prompt' and extract the insights specified in 'Required Output Columns'.
+
+Detailed Instructions:
+1. **Contextual Analysis**
+   - Carefully read and comprehend the provided research paper text.
+   - Identify the core context, research objectives, and key arguments.
+   - Align analysis with the specified paper section.
+
+2. **Insight Extraction Methodology**
+   - For each required output column:
+     a. Conduct a deep, nuanced analysis of the text.
+     b. Extract precise, evidence-based insights.
+     c. Ensure insights are directly derived from the source text.
+     d. Maintain academic rigor and objectivity.
+
+3. **JSON Response Requirements**
+   - Generate a structured JSON response.
+   - Include ALL specified columns, using the exact names provided in 'Required Output Columns'.
+   - Ensure that you are using the exact names that are mentioned in the user's input key list.
+   - Note that this JSON will later be used to populate a table having the user mentioned column names, so please use the same key/column names only.
+   - **DO NOT INCLUDE THE WORD JSON IN THE OUTPUT STRING, DO NOT INCLUDE BACKTICKS (```) IN THE OUTPUT, AND DO NOT INCLUDE ANY OTHER TEXT, OTHER THAN THE ACTUAL JSON RESPONSE. START THE RESPONSE STRING WITH AN OPEN CURLY BRACE {{ AND END WITH A CLOSING CURLY BRACE }}.**
+   - Populate each column with:
+     * Concise, informative text.
+     * Direct insights from the research paper.
+     * Clear, academic language.
+     * Minimal interpretation beyond the text's explicit content.
+
+4. **Quality Assurance Checks**
+   - Verify that insights are:
+     * Directly supported by the text.
+     * Relevant to the specified section.
+     * Aligned with the user's analytical requirements.
+     * Free from external assumptions or unsupported claims.
+"""
+        try:
+            messages = [
+                {
+                    "role": "system",
+                    "content": "You are an AI that is an expert on research papers for data analysis. You MUST respond in a JSON format only."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+            # Call the OpenAI API
+            client = OpenAI(api_key=api_key)
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=messages,
+                temperature=0.1
+            )
+
+            # Extract the assistant's reply
+            reply = response.choices[0].message.content.strip()
+
+            # Parse the JSON response
+            data = json.loads(reply)
+
+            # Ensure all required columns are present
+            missing_columns = [col for col in new_columns if col not in data]
+            if missing_columns:
+                # Handle missing columns
+                for col in missing_columns:
+                    data[col] = None
+
+            # Add the data to the results list
+            results.append(data)
+
+        except Exception as e:
+            print(f"Error processing row {index}: {e}")
+            # Append None or empty dictionary to keep the index alignment
+            empty_data = {col: None for col in new_columns}
+            results.append(empty_data)
+
+    # Convert results to DataFrame
+    results_df = pd.DataFrame(results, columns=new_columns)
+
+    # Reset indices to align the dataframes
+    dataframe.reset_index(drop=True, inplace=True)
+    results_df.reset_index(drop=True, inplace=True)
+
+    # Concatenate the original dataframe with the new columns
+    final_df = pd.concat([dataframe, results_df], axis=1)
+
+    return final_df
 
 def read_pdf_content(file_path):
     """
@@ -315,7 +444,7 @@ def themes_main(username):
     if "current_theme" not in st.session_state:
         st.session_state.current_theme = ""
     
-    tab1, tab2, tab3 = st.tabs(["Theme Generation", "Corpus Upload", "Doc Theme Generation"])
+    tab1, tab2, tab3, tab4 = st.tabs(["Theme Generation", "Corpus Upload", "Doc Theme Generation", "Table Analytics"])
 
     user = db['users']
     current_user = user.find_one({'username': username})
@@ -646,3 +775,41 @@ def themes_main(username):
                     st.error(f"An error occurred: {e}")
             else:
                 st.warning("Please set your OpenAI API key in your profile settings.")
+    with tab4:
+        st.info("Upload CSV file for extrapolation analysis. This module analyze particular column of a CSV, extrapolates the data for new insights and structures the data into a new CSV file.")
+
+        uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"], accept_multiple_files=False)
+
+        if uploaded_file:
+            df_user_uploaded = pd.read_csv(uploaded_file)
+            st.dataframe(df_user_uploaded)
+
+            columns = df_user_uploaded.columns
+            selected_column = st.selectbox("Select a column for analysis", columns)
+            st.success(f"Selected column: {selected_column}")
+
+            prompt = st.text_area("Enter a prompt query (explanation of required fields):")
+
+            new_columns = st.text_input("Enter the column names for structuring the documents (comma-separated only):")
+
+            if new_columns and st.button("Structure Documents"):
+                try:
+                    columns_list = [col.strip() for col in new_columns.split(',')]
+                    
+                    with st.spinner("Structuring documents... This may take a while."):
+                        op_df_full = csv_analytics(openai_key, prompt, new_columns, selected_column, df_user_uploaded)
+
+                        st.write("Structured Document Data:")
+                        st.dataframe(op_df_full)
+
+                        csv = op_df_full.to_csv(index=False)
+
+                        st.download_button(
+                            label="Download Structured CSV",
+                            data=csv,
+                            file_name="structured_data.csv",
+                            mime='text/csv'
+                        )
+
+                except Exception as e:
+                    st.error(e)

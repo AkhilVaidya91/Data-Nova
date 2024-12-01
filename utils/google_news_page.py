@@ -9,7 +9,7 @@ from datetime import datetime
 
 def google_news_page_loader(apify_api_key, gemini_api_key, perplexity_api_key, op_path, username):
     st.info("""
-    ### About the Scraping Platform
+    **About the Scraping Platform**
 
     This platform is designed for data mining from multiple sources, focusing on **Google News scraping**. It allows users to extract headlines, article content, publication details, and even generate descriptive captions for associated images.
 

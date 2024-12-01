@@ -17,17 +17,18 @@ def flickr_page_loader(gemini_api_key, apify_api_key, op_path, username):
 
     st.info(
         """
-    ### Flickr Data Scraping Platform
+    **Flickr Data Scraping Platform**
 
     This platform is designed to scrape data from **Flickr**, providing insights into media content such as title, favorite count, comment count, media type, and associated images with AI-generated captions. 
-
-    #### Features:
-    - **web.harvester/flickr-scraper**: Please enable this Apify actor on your Apify console.
+    
+    **web.harvester/flickr-scraper**: Please enable this Apify actor on your Apify console.
+    
+    **Features:**
     - **AI-Generated Captions**: Employs the Gemini model to generate descriptive captions for each image.
     - **Excel Integration**: Saves the scraped data into a structured Excel file for easy access.
     - **Database Logging**: Logs metadata about generated files into a MongoDB database for tracking.
 
-    #### Output:
+    **Output:**
     - A DataFrame with structured data.
     - An Excel file containing detailed metadata about the scraped Flickr posts, including image captions.
     """

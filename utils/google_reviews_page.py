@@ -11,7 +11,7 @@ def google_reviews_page_loader(gemini_api_key, apify_api_key, op_path, username)
 
     st.info(
         """
-        **Scraping Platform
+        **Google Reviews Scraping Platform**
         - This platform collects and organizes data from Google Maps reviews for analysis and insights.
         - It allows users to scrape reviews based on specific links, date ranges, or public accounts.
         - Outputs are saved in structured Excel files and logged in a MongoDB database for easy retrieval.
