@@ -344,6 +344,7 @@ Detailed Instructions:
    - Generate a structured JSON response.
    - Include ALL specified columns, using the exact names provided in 'Required Output Columns'.
    - Ensure that you are using the exact names that are mentioned in the user's input key list.
+   - The values of the keys should be plain text strings only (no nested objects or lists).
    - Note that this JSON will later be used to populate a table having the user mentioned column names, so please use the same key/column names only.
    - **DO NOT INCLUDE THE WORD JSON IN THE OUTPUT STRING, DO NOT INCLUDE BACKTICKS (```) IN THE OUTPUT, AND DO NOT INCLUDE ANY OTHER TEXT, OTHER THAN THE ACTUAL JSON RESPONSE. START THE RESPONSE STRING WITH AN OPEN CURLY BRACE {{ AND END WITH A CLOSING CURLY BRACE }}.**
    - Populate each column with:
@@ -351,6 +352,7 @@ Detailed Instructions:
      * Direct insights from the research paper.
      * Clear, academic language.
      * Minimal interpretation beyond the text's explicit content.
+     * Only use pure normal strings as the JSON values, no objects or lists.
 
 4. **Quality Assurance Checks**
    - Verify that insights are:
@@ -373,7 +375,7 @@ Detailed Instructions:
             # Call the OpenAI API
             client = OpenAI(api_key=api_key)
             response = client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4o-mini",
                 messages=messages,
                 temperature=0.1
             )
@@ -781,35 +783,41 @@ def themes_main(username):
         uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"], accept_multiple_files=False)
 
         if uploaded_file:
-            df_user_uploaded = pd.read_csv(uploaded_file)
-            st.dataframe(df_user_uploaded)
+            ## wrapping the read_csv in a try-except block to handle errors
 
-            columns = df_user_uploaded.columns
-            selected_column = st.selectbox("Select a column for analysis", columns)
-            st.success(f"Selected column: {selected_column}")
+            try:
+                df_user_uploaded = pd.read_csv(uploaded_file)
+                st.dataframe(df_user_uploaded)
 
-            prompt = st.text_area("Enter a prompt query (explanation of required fields):")
+                columns = df_user_uploaded.columns
+                selected_column = st.selectbox("Select a column for analysis", columns)
+                st.success(f"Selected column: {selected_column}")
 
-            new_columns = st.text_input("Enter the column names for structuring the documents (comma-separated only):")
+                prompt = st.text_area("Enter a prompt query (explanation of required fields):")
 
-            if new_columns and st.button("Structure Documents"):
-                try:
-                    columns_list = [col.strip() for col in new_columns.split(',')]
-                    
-                    with st.spinner("Structuring documents... This may take a while."):
-                        op_df_full = csv_analytics(openai_key, prompt, new_columns, selected_column, df_user_uploaded)
+                new_columns = st.text_input("Enter the column names for structuring the documents (comma-separated only):")
 
-                        st.write("Structured Document Data:")
-                        st.dataframe(op_df_full)
+                if new_columns and st.button("Structure Documents"):
+                    try:
+                        columns_list = [col.strip() for col in new_columns.split(',')]
+                        
+                        with st.spinner("Structuring documents... This may take a while."):
+                            op_df_full = csv_analytics(openai_key, prompt, new_columns, selected_column, df_user_uploaded)
 
-                        csv = op_df_full.to_csv(index=False)
+                            st.write("Structured Document Data:")
+                            st.dataframe(op_df_full)
 
-                        st.download_button(
-                            label="Download Structured CSV",
-                            data=csv,
-                            file_name="structured_data.csv",
-                            mime='text/csv'
-                        )
+                            csv = op_df_full.to_csv(index=False)
 
-                except Exception as e:
-                    st.error(e)
+                            st.download_button(
+                                label="Download Structured CSV",
+                                data=csv,
+                                file_name="structured_data.csv",
+                                mime='text/csv'
+                            )
+
+                    except Exception as e:
+                        st.error(f"Error structuring documents: {e}")
+
+            except Exception as e:
+                st.error("Please ensure that you upload a valid UTF-8 encoded CSV file.")
