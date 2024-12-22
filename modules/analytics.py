@@ -6,7 +6,11 @@ from pymongo import MongoClient
 import openai
 from openai import OpenAI
 import streamlit as st
-from datetime import datetime
+from datetime import datetime, timedelta
+
+import plotly.express as px
+import plotly.graph_objects as go
+from pytrends.request import TrendReq
 
 # MongoDB connection
 MONGO_URI = os.getenv('MONGO_URI')
@@ -203,7 +207,7 @@ def analytics_page(username):
     )
 
 
-    tab1, tab2 = st.tabs(["Document Analytics", "Theme Analytics"])
+    tab1, tab2, tab3 = st.tabs(["Document Analytics", "Theme Analytics", "Google Trends"])
 
     with tab1:
         themes_cursor = themes_collection.find({'username': username})
@@ -250,9 +254,13 @@ def analytics_page(username):
 
         selected_corpus = st.selectbox("Corpus Selection", corpus_options)
 
+        analytics_title = st.text_input("Enter the title for the analytics", value=f"{selected_theme} Analytics")
+
         if st.button("Run Theme Comparative Analytics"):
             theme_df = get_theme_data(username, selected_theme)
             corpus_documents = get_corpus_data(username, selected_corpus)
+
+            analytics_data = []
 
             for idx, row in theme_df.iterrows():
                 goal = row['Goal']
@@ -286,7 +294,205 @@ def analytics_page(username):
                                 relevant_text = matching_desc_text
 
                                 analytics_output = derive_analytics(relevant_goal, relevant_text, openai_api_key)
+
+                                analytics_entry = {
+                                    'Username': username,
+                                    'Analytics Title': analytics_title,
+                                    'Theme Title': selected_theme,
+                                    'Corpus Name': selected_corpus,
+                                    'Goal': goal,
+                                    'Document Name': doc_name,
+                                    'Similarity Score': max_desc_similarity,
+                                    'Matching Text': matching_desc_text,
+                                    'Analytics Output': analytics_output,
+                                    'Timestamp': datetime.now()
+                                }
+                                analytics_data.append(analytics_entry)
                                 st.markdown(analytics_output)
-                                # st.write(f"**Mathing Description text**: {matching_desc_text}")
+                                st.write(f"**Mathing Description text**: {matching_desc_text}")
                                 # st.write(f"**Similarity Score with Description**: {max_desc_similarity}")
-                                
+                
+            ##
+            if analytics_data:
+                theme_analytics_collection = db['theme_analytics']
+                theme_analytics_collection.insert_many(analytics_data)
+                st.success("Analytics data has been stored in the 'theme_analytics' collection.")
+
+                # Convert analytics data to pandas DataFrame
+                analytics_df = pd.DataFrame(analytics_data)
+
+                # Display the DataFrame
+                st.dataframe(analytics_df, use_container_width=True)
+
+                # Provide option to download CSV
+                csv = analytics_df.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="Download Analytics as CSV",
+                    data=csv,
+                    file_name=f"{analytics_title.replace(' ', '_')}.csv",
+                    mime='text/csv',
+                )
+            else:
+                st.warning("No analytics data was generated.")
+    with tab3:
+        pass
+        ## take in the user input parameters for google trend analytics as per the ones mentioned in the trends.py file
+        ## show the trend graphs then the table and an option to download the data
+
+        ## once the table is generated, store it in mongo db and show the data in the themes collection - with the username, title of the google trends data (all the camma separated keywords in search), the structured data, and the timestamp
+
+        # Create three columns for input parameters
+        st.subheader("Search Parameters")
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            # Keywords input
+            keywords_input = st.text_input(
+                "Enter up to 5 keywords (comma-separated)",
+                "Python, JavaScript"
+            )
+
+            # Category selection
+            categories = {
+                "All Categories": 0,
+                "Business": 12,
+                "Entertainment": 3,
+                "Health": 45,
+                "Science": 8,
+                "Sports": 20,
+                "Technology": 5
+            }
+            selected_category = st.selectbox("Select Category", list(categories.keys()))
+
+        with col2:
+            # Time range options
+            time_options = {
+                "Past Hour": "now 1-H",
+                "Past 4 Hours": "now 4-H",
+                "Past Day": "now 1-d",
+                "Past 7 Days": "now 7-d",
+                "Past Month": "today 1-m",
+                "Past 3 Months": "today 3-m",
+                "Past 12 Months": "today 12-m",
+                "Past 5 Years": "today 5-y",
+                "Custom Range": "custom"
+            }
+            selected_timeframe = st.selectbox("Select Time Range", list(time_options.keys()))
+            
+            # Region selection
+            geo_options = {
+                "Worldwide": "",
+                "United States": "US",
+                "United Kingdom": "GB",
+                "India": "IN",
+                "Canada": "CA",
+                "Australia": "AU"
+            }
+            selected_geo = st.selectbox("Select Region", list(geo_options.keys()))
+
+        with col3:
+            # Custom date range if selected
+            if selected_timeframe == "Custom Range":
+                start_date = st.date_input(
+                    "Start Date",
+                    datetime.now() - timedelta(days=365)
+                )
+                end_date = st.date_input(
+                    "End Date",
+                    datetime.now()
+                )
+                timeframe = f"{start_date} {end_date}"
+            else:
+                timeframe = time_options[selected_timeframe]
+
+        # Center the analyze button
+        col1, col2, col3 = st.columns([1, 1, 1])
+        with col2:
+            analyze_button = st.button("Analyze Trends", use_container_width=True)
+
+        # Add a divider
+        st.divider()
+
+        # Process inputs when user clicks the button
+        if analyze_button:
+            try:
+                # Clean and validate keywords
+                keywords = [k.strip() for k in keywords_input.split(",")]
+                if len(keywords) > 5:
+                    st.error("Please enter no more than 5 keywords.")
+                else:
+                    # Ensure pytrends is in session state
+                    if 'pytrends' not in st.session_state:
+                        st.session_state.pytrends = TrendReq(hl='en-US', tz=360)
+
+                    # Build payload
+                    st.session_state.pytrends.build_payload(
+                        keywords,
+                        cat=categories[selected_category],
+                        timeframe=timeframe,
+                        geo=geo_options[selected_geo]
+                    )
+                    
+                    # Get interest over time data
+                    interest_df = st.session_state.pytrends.interest_over_time()
+                    
+                    if not interest_df.empty:
+                        # Interest Over Time Section
+                        st.subheader("Interest Over Time")
+                        
+                        # Create line chart
+                        fig = px.line(
+                            interest_df,
+                            x=interest_df.index,
+                            y=keywords,
+                            title="Search Interest Over Time",
+                            labels={"value": "Search Interest", "variable": "Keyword"}
+                        )
+                        fig.update_layout(
+                            height=500,
+                            margin=dict(t=30, b=0, l=0, r=0)
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
+                        
+                        # Add a divider
+                        st.divider()
+                        
+                        # Raw Data Section
+                        st.subheader("Raw Data")
+                        st.dataframe(interest_df, use_container_width=True)
+                        
+                        # Download section with some styling
+                        st.divider()
+                        col1, col2, col3 = st.columns([1, 1, 1])
+                        with col2:
+                            st.download_button(
+                                label="Download Data as CSV",
+                                data=interest_df.to_csv().encode('utf-8'),
+                                file_name='google_trends_data.csv',
+                                mime='text/csv',
+                                use_container_width=True
+                            )
+
+                        # Store the data in MongoDB
+
+                        # Create a structured data dictionary
+                        interest_df.index = interest_df.index.map(str)
+                        structured_data = {
+                            "Keywords": keywords_input,
+                            "Timeframe": timeframe,
+                            "Region": selected_geo,
+                            "structured_data": interest_df.to_dict(), ## one of the columns has date object giving the error
+                            "username": username,
+                            "corpus_name": keywords_input,
+                            'timestamp': datetime.now()
+                        }
+
+                        # Insert the structured data into the 'themes' collection
+
+                        corpus_collection.insert_one(structured_data)
+                        st.success("Data has been successfully stored in the 'themes' collection.")
+                    else:
+                        st.info("No interest over time data available for the selected parameters.")
+                        
+            except Exception as e:
+                st.error(f"An error occurred: {str(e)}")

@@ -254,7 +254,7 @@ def structure_document_content(api_key, document_text, columns):
     """
     # columns = str(columns)
     prompt = f"""Structure the following document content into a single row with these columns: {columns}
-    The goals colums should contain the main theme goals that can be identified, keywords should list out atleast 8 keywords per goal.
+    The if there is a column called goals or keywords, then goals colums should contain the main theme goals that can be identified, keywords should list out atleast 8 keywords per goal.
     
     Document content: {document_text}
     Ensure that your response is extremely detailed and covers every single important point from the document. If it has names or dates or project names mentioned, ensure that they are included in the response.
@@ -586,14 +586,14 @@ def themes_main(username):
             type=["pdf"],
             accept_multiple_files=True
         )
+        saved_files = []
+        all_vectors = []
         
         if corpus_name and uploaded_files:
 
             if st.button("Save Corpus"):
                 try:
                     # Save files and collect filenames
-                    saved_files = []
-                    all_vectors = []
                     
                     for uploaded_file in uploaded_files:
                         # Create a filename that includes corpus name for organization
@@ -605,15 +605,19 @@ def themes_main(username):
                         with open(file_path, "wb") as f:
                             f.write(uploaded_file.getbuffer())
                         saved_files.append(filename)
-                        
+
                         # Process PDF and create vectors
-                        with st.spinner(f"Processing {filename} and creating vectors..."):
-                            vectors = process_pdf_and_create_vectors(
-                                file_path, 
-                                filename, 
-                                openai_key
-                            )
-                            all_vectors.extend(vectors)
+
+                    if st.button("Process PDF and Create Vectors", key=filename):
+                        for uploaded_file in uploaded_files:
+
+                            with st.spinner(f"Processing {filename} and creating vectors..."):
+                                vectors = process_pdf_and_create_vectors(
+                                    file_path, 
+                                    filename, 
+                                    openai_key
+                                )
+                                all_vectors.extend(vectors)
                     
                     # Store vectors in MongoDB
                     if all_vectors:
@@ -658,12 +662,14 @@ def themes_main(username):
                     st.error(f"Error saving corpus: {e}")
                 # finally:
                 #     client.close()
+            
 
             columns = st.text_input("Enter the column names for structuring the documents (comma-separated):")
 
             if columns and st.button("Structure Documents"):
                 try:
                     # columns_list = [col.strip() for col in columns.split(',')]
+                    # columns = st.text_input("Enter the column names for structuring the documents (comma-separated):")
                     columns_list = columns
                     structured_data = []
                     
@@ -730,7 +736,6 @@ def themes_main(username):
         )
 
         if theme_name and uploaded_file:
-            print(1)
             if openai_key:
                 try:
                     # Save the uploaded PDF to a temporary location

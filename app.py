@@ -186,8 +186,8 @@ def main_app():
                     flickr_page.flickr_page_loader(gemini_api_key, apify_api_key, op_path, st.session_state.username)
 
                 elif platform == "Scrape website with AI":
-                    st.warning("This feature is currently disabled for development")
-                    # website_page.website_page_loader(gemini_api_key)
+                    # st.warning("This feature is currently disabled for development")
+                    website_page.website_page_loader(st.session_state.username)
 
                 elif platform == "Facebook":
                     facebook_page.facebook_page_loader(gemini_api_key, apify_api_key, op_path, st.session_state.username)

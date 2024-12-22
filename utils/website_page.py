@@ -5,11 +5,18 @@ from modules.scrape import (
     clean_body_content,
     split_dom_content,
 )
-from modules.parse import parse_with_gemini
+from modules.parse import parse_with_openai
 import pandas as pd
 # import markdown
 from io import StringIO
 from modules import parse, scrape
+from pymongo import MongoClient
+import json
+import os
+
+MONGO_URI = os.getenv('MONGO_URI')
+MONGO_URI = "mongodb+srv://akhilvaidya22:qN2dxc1cpwD64TeI@digital-nova.cbbsn.mongodb.net/?retryWrites=true&w=majority&appName=digital-nova"
+
 
 def markdown_to_dataframe(markdown_content):
     # Extract the table portion of the markdown
@@ -29,7 +36,22 @@ def markdown_to_dataframe(markdown_content):
 
 # Streamlit UI
 # st.title("AI Web Scraper")
-def website_page_loader(gemini_api_key):
+def website_page_loader(username):
+    client = MongoClient(MONGO_URI)
+    db = client['digital_nova']
+    user = db['users']
+    current_user = user.find_one({'username': username})
+    if current_user:
+        api_keys = current_user.get('api_keys', {})
+        openai_key = api_keys.get('openai', "")
+    else:
+        api_keys = {}
+
+    if not openai_key:
+        st.warning("Please enter your OpenAI API key in the 'API Keys Management' section.")
+        return
+
+    name_website = st.text_input("Enter the name of the website", key="website_name")
     url = st.text_input("Enter Website URL", key="website_url")
 
     # Step 1: Scrape the Website
@@ -45,6 +67,7 @@ def website_page_loader(gemini_api_key):
             # Store the DOM content in Streamlit session state
             st.session_state.dom_content = cleaned_content
 
+
             # Display the DOM content in an expandable text box
             # with st.expander("View DOM Content"):
             #     st.text_area("DOM Content", cleaned_content, height=300)
@@ -56,13 +79,24 @@ def website_page_loader(gemini_api_key):
 
         if st.button("Parse Content", key="parse_content"):
             if parse_description:
-                st.write("Parsing the content...", key="parsing_content")
+                st.write("Parsing the content...")
 
                 # Parse the content with Ollama
                 dom_chunks = split_dom_content(st.session_state.dom_content)
-                parsed_result = parse_with_gemini(dom_chunks, parse_description, gemini_api_key)
-                # st.write(parsed_result)
 
-                df = markdown_to_dataframe(parsed_result)
+                df = parse_with_openai(dom_chunks, parse_description, openai_key)
 
                 st.dataframe(df, key="parsed_content")
+                # Convert dataframe to JSON
+                json_data = df.to_json(orient='records')
+
+                # Store JSON data in MongoDB 'corpus' collection
+                client = MongoClient(MONGO_URI)
+                db = client['digital_nova']
+                corpus_collection = db['corpus']
+
+                structured_records = {'username': username, 'structured_data': json_data, 'corpus_name': name_website}
+                # Insert JSON data into 'corpus' collection
+                corpus_collection.insert_one(structured_records)
+
+                st.success("Data has been successfully stored in the 'corpus' collection.")

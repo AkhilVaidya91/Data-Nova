@@ -94,7 +94,7 @@ def display_dashboard(username):
         return
 
     # Create tabs
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["User Info", "API Keys", "Scraped Files", "Uploaded Corpuses", "Themes"])
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["User Info", "API Keys", "Scraped Files", "Uploaded Corpuses", "Themes", "Analytics"])
 
     with tab1:
         # User Info
@@ -183,6 +183,48 @@ def display_dashboard(username):
                         st.error(f"Error displaying theme data: {str(e)}")
         else:
             st.write("No themes found.")
+
+    with tab6:
+        # Analytics
+        st.subheader("Analytics")
+
+        # Fetch analytics data for the user
+        theme_analytics_collection = db['theme_analytics']
+        analytics_cursor = theme_analytics_collection.find({'Username': username})
+        analytics_data = list(analytics_cursor)
+
+        if analytics_data:
+            # Group analytics data by 'Analytics Title'
+            from collections import defaultdict
+            analytics_groups = defaultdict(list)
+            for data in analytics_data:
+                analytics_title = data.get('Analytics Title', 'Untitled Analytics')
+                analytics_groups[analytics_title].append(data)
+
+            # Iterate over each analytics group
+            for title, data_list in analytics_groups.items():
+                with st.expander(title):
+                    # Convert the list of data into a DataFrame
+                    analytics_df = pd.DataFrame(data_list)
+
+                    # Remove the MongoDB '_id' field if present
+                    if '_id' in analytics_df.columns:
+                        analytics_df.drop(columns=['_id'], inplace=True)
+
+                    # Display the DataFrame
+                    st.dataframe(analytics_df, use_container_width=True)
+
+                    # # Provide option to download CSV
+                    # csv_data = analytics_df.to_csv(index=False).encode('utf-8')
+                    # st.download_button(
+                    #     label="Download Analytics as CSV",
+                    #     data=csv_data,
+                    #     file_name=f"{title.replace(' ', '_')}.csv",
+                    #     mime='text/csv',
+                    #     key=f"download_{title}"
+                    # )
+        else:
+            st.write("No analytics data found.")
 
 def dashboard():
     if 'username' in st.session_state:

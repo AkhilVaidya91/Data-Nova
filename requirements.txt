@@ -18,3 +18,5 @@ openai
 pymongo
 llama-index
 pypdf2
+pytrends
+plotly
