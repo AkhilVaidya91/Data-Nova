@@ -20,3 +20,4 @@ llama-index
 pypdf2
 pytrends
 plotly
+transformers

@@ -15,6 +15,7 @@ from numpy.linalg import norm
 import PyPDF2
 from io import BytesIO
 import base64
+import modules.main as main
 
 
 MONGO_URI = os.getenv('MONGO_URI')
@@ -258,7 +259,7 @@ def structure_document_content(api_key, document_text, columns):
     
     Document content: {document_text}
     Ensure that your response is extremely detailed and covers every single important point from the document. If it has names or dates or project names mentioned, ensure that they are included in the response.
-    Return only a list of JSON object with the specified columns as keys and appropriate content as values. Note that this JSON will be passed on to pandas to convert to a dataframe, so create the dataframe accordingly. DO NOT USE THE WORD JSON IN RESPONSE OR EVEN BACKTICS ```. Start and end your response with curley beackets. 
+    Return only a list of flat JSON objects with the specified columns as keys and appropriate content as values. The values should either be strings or numbers, no nested objects or lists at all. Note that this JSON will be passed on to pandas to convert to a dataframe, so create the dataframe accordingly. DO NOT USE THE WORD JSON IN RESPONSE OR EVEN BACKTICS ```. Start and end your response with curley beackets. 
     Ensure the response can be directly parsed as JSON without any additional text."""
     
     messages = [
@@ -608,10 +609,11 @@ def themes_main(username):
 
                         # Process PDF and create vectors
 
-                    if st.button("Process PDF and Create Vectors", key=filename):
+                    # if st.button("Process PDF and Create Vectors", key=filename):
+                    if True:
                         for uploaded_file in uploaded_files:
 
-                            with st.spinner(f"Processing {filename} and creating vectors..."):
+                            with st.spinner(f"Processing {filename}..."):
                                 vectors = process_pdf_and_create_vectors(
                                     file_path, 
                                     filename, 
@@ -664,7 +666,22 @@ def themes_main(username):
                 #     client.close()
             
 
-            columns = st.text_input("Enter the column names for structuring the documents (comma-separated):")
+            # columns = st.text_input("Enter the column names for structuring the documents (comma-separated):")
+
+            possible_columns = [
+                "Introduction", "Keywords", "Abstract", "Title", "Methodology", 
+                "Results", "Conclusion", "Discussion", "Examples", "Policy", 
+                "Objectives", "Committee", "Programs"
+            ]
+
+            # Let the user select multiple columns
+            selected_columns = st.multiselect(
+                "Select the column names for structuring the documents:",
+                possible_columns
+            )
+
+            # Convert the selected columns into a comma-separated string
+            columns = ", ".join(selected_columns)
 
             if columns and st.button("Structure Documents"):
                 try:
@@ -783,46 +800,101 @@ def themes_main(username):
             else:
                 st.warning("Please set your OpenAI API key in your profile settings.")
     with tab4:
-        st.info("Upload CSV file for extrapolation analysis. This module analyze particular column of a CSV, extrapolates the data for new insights and structures the data into a new CSV file.")
+        st.info("Upload an Excel (.xlsx) file for extrapolation analysis. This module analyzes columns of a table, extrapolates the data for new insights and structures the data into a new excel file.")
 
-        uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"], accept_multiple_files=False)
+        ## select a theme from the available themes
 
-        if uploaded_file:
-            ## wrapping the read_csv in a try-except block to handle errors
+        themes = themes_collection.find({'username': username})
+        theme_list = [theme['theme_title'] for theme in themes]
 
-            try:
-                df_user_uploaded = pd.read_csv(uploaded_file)
-                st.dataframe(df_user_uploaded)
+        selected_theme = st.selectbox("Select a theme for analysis", theme_list)
 
-                columns = df_user_uploaded.columns
-                selected_column = st.selectbox("Select a column for analysis", columns)
-                st.success(f"Selected column: {selected_column}")
+        ## get the structured table from the selected theme
 
-                prompt = st.text_area("Enter a prompt query (explanation of required fields):")
+        theme_data = themes_collection.find_one({'username': username, 'theme_title': selected_theme})
+        if theme_data:
+            structured_data = theme_data.get('structured_data', [])
+            columns = theme_data.get('columns', [])
+            st.write(f"Structured Data for Theme '{selected_theme}':")
+            df = pd.DataFrame(structured_data)
+            ## add a column called ID and set it as the index
+            df['ID'] = df.index
+            st.dataframe(df)
 
-                new_columns = st.text_input("Enter the column names for structuring the documents (comma-separated only):")
+            ## dropdown for model selection - GPT, Llama, Mistral
 
-                if new_columns and st.button("Structure Documents"):
-                    try:
-                        columns_list = [col.strip() for col in new_columns.split(',')]
+            model = st.selectbox("Select a model for analysis", ["GPT-4o", "Llama", "Mistral"])
+
+            ## if model is llama or mistral add approved huggingface key
+
+            if model in ["Llama", "Mistral"]:
+                huggingface_key = st.text_input("Enter Huggingface API key:")
+            else:
+                huggingface_key = None
+
+            st.markdown("""
+            ### Required File Formats - Abstract File:
+
+            - Excel file (.xlsx) with column:
+                1. Abstract (containing research abstracts to analyze)
+            """)
+            abstracts_file = st.file_uploader("Upload Excel file with abstracts", type=['xlsx'])
+            if abstracts_file:
+                df_abstracts = pd.read_excel(abstracts_file)
+
+                abstracts_file_columns = df_abstracts.columns
+
+                st.dataframe(df_abstracts)
+
+            ## show all columns checkbox to select columns for concatination
+
+                selected_columns = st.multiselect("Select columns for analysis", abstracts_file_columns)
+
+                df_abstracts["Combined"] = df_abstracts[selected_columns].apply(lambda x: ' '.join(x.dropna().astype(str)), axis=1)
+
+            # st.dataframe(df_abstracts)
+
+            if abstracts_file is not None:
+                main.main(df, df_abstracts, openai_key, model, huggingface_key)
+        
+        # uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"], accept_multiple_files=False)
+
+        # if uploaded_file:
+        #     ## wrapping the read_csv in a try-except block to handle errors
+
+        #     try:
+        #         df_user_uploaded = pd.read_csv(uploaded_file)
+        #         st.dataframe(df_user_uploaded)
+
+        #         columns = df_user_uploaded.columns
+        #         selected_column = st.selectbox("Select a column for analysis", columns)
+        #         st.success(f"Selected column: {selected_column}")
+
+        #         prompt = st.text_area("Enter a prompt query (explanation of required fields):")
+
+        #         new_columns = st.text_input("Enter the column names for structuring the documents (comma-separated only):")
+
+        #         if new_columns and st.button("Structure Documents"):
+        #             try:
+        #                 columns_list = [col.strip() for col in new_columns.split(',')]
                         
-                        with st.spinner("Structuring documents... This may take a while."):
-                            op_df_full = csv_analytics(openai_key, prompt, new_columns, selected_column, df_user_uploaded)
+        #                 with st.spinner("Structuring documents... This may take a while."):
+        #                     op_df_full = csv_analytics(openai_key, prompt, new_columns, selected_column, df_user_uploaded)
 
-                            st.write("Structured Document Data:")
-                            st.dataframe(op_df_full)
+        #                     st.write("Structured Document Data:")
+        #                     st.dataframe(op_df_full)
 
-                            csv = op_df_full.to_csv(index=False)
+        #                     csv = op_df_full.to_csv(index=False)
 
-                            st.download_button(
-                                label="Download Structured CSV",
-                                data=csv,
-                                file_name="structured_data.csv",
-                                mime='text/csv'
-                            )
+        #                     st.download_button(
+        #                         label="Download Structured CSV",
+        #                         data=csv,
+        #                         file_name="structured_data.csv",
+        #                         mime='text/csv'
+        #                     )
 
-                    except Exception as e:
-                        st.error(f"Error structuring documents: {e}")
+        #             except Exception as e:
+        #                 st.error(f"Error structuring documents: {e}")
 
-            except Exception as e:
-                st.error("Please ensure that you upload a valid UTF-8 encoded CSV file.")
+        #     except Exception as e:
+        #         st.error("Please ensure that you upload a valid UTF-8 encoded CSV file.")
