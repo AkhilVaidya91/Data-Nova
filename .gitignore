@@ -25,6 +25,7 @@ ENV/
 # Local development settings
 .env
 .env.local
+.log
 
 # Test cache
 .pytest_cache/
