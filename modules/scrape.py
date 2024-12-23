@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 import os
 
 # SBR_WEBDRIVER = os.getenv("SBR_WEBDRIVER")
-SBR_WEBDRIVER = "https://brd-customer-hl_e95029e8-zone-test_1:wlz68fs7myyv@brd.superproxy.io:9515"
+SBR_WEBDRIVER = "wss://brd-customer-hl_1742ed52-zone-scraping_browser1:lxo1mq85pta2@brd.superproxy.io:9222"
 
 
 def scrape_website(website):
