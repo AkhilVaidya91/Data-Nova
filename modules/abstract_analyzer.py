@@ -196,8 +196,8 @@ class AbstractAnalyzer:
                     elif model_type == "Mistral":
                         raw_response = self._send_to_mistral(prompt, hf_token)
                     elif model_type == "Llama":
-                        print(hf_token)
-                        print(len(hf_token))
+                        # print(hf_token)
+                        # print(len(hf_token))
                         raw_response = self._send_to_llama(prompt, hf_token)
                     
                     if not raw_response:
@@ -551,13 +551,13 @@ class AbstractAnalyzer:
                 logger.error(f"Error calling Llama model: {str(e)}")
             raise ValueError(f"Llama Error: {str(e)}")
 
-    def _send_to_llama(prompt: str, access_token, logger=None) -> str:
+    def _send_to_llama(prompt, access_token, logger=None) -> str:
         """Send prompt to Llama model"""
         # if "HUGGINGFACE_TOKEN" in os.environ:
         #     login(token=os.getenv("HUGGINGFACE_TOKEN"))
         
         model_name = "meta-llama/Llama-3.2-3B"
-        # print(access_token)
+        print(access_token)
         tokenizer = AutoTokenizer.from_pretrained(model_name, token=access_token)
         model = AutoModelForCausalLM.from_pretrained(model_name, token=access_token)
         
