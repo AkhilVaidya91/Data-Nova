@@ -196,6 +196,7 @@ class AbstractAnalyzer:
                     elif model_type == "Mistral":
                         raw_response = self._send_to_mistral(prompt, hf_token)
                     elif model_type == "Llama":
+                        print(hf_token)
                         raw_response = self._send_to_llama(prompt, hf_token)
                     
                     if not raw_response:
@@ -555,9 +556,9 @@ class AbstractAnalyzer:
         #     login(token=os.getenv("HUGGINGFACE_TOKEN"))
         
         model_name = "meta-llama/Llama-3.2-3B"
-        print(access_token)
-        tokenizer = AutoTokenizer.from_pretrained(model_name, use_auth_token=access_token)
-        model = AutoModelForCausalLM.from_pretrained(model_name, use_auth_token=access_token)
+        # print(access_token)
+        tokenizer = AutoTokenizer.from_pretrained(model_name, token=access_token)
+        model = AutoModelForCausalLM.from_pretrained(model_name, token=access_token)
         
         try:
             system_prompt = "Return only a valid Python dictionary. No other text."
