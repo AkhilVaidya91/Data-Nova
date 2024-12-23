@@ -21,3 +21,4 @@ pypdf2
 pytrends
 plotly
 transformers
+torch
