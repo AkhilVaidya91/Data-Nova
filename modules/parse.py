@@ -111,7 +111,7 @@ Before responding:
         },  
         {
             "role": "user",
-            "content": dom_chunks
+            "content": f"The web content that is unstructured: {dom_chunks}. The exact data that the user wants to structure: {parse_description}."
         },
     ]
     response = client.chat.completions.create(
