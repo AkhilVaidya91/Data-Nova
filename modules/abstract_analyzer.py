@@ -197,6 +197,7 @@ class AbstractAnalyzer:
                         raw_response = self._send_to_mistral(prompt, hf_token)
                     elif model_type == "Llama":
                         print(hf_token)
+                        print(len(hf_token))
                         raw_response = self._send_to_llama(prompt, hf_token)
                     
                     if not raw_response:
