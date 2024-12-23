@@ -217,7 +217,7 @@ class AbstractAnalyzer:
                     if retry_count >= max_retries:
                         self._handle_batch_error(start, end, all_responses)
                         # print(e)
-                        
+
                         break
                     time.sleep(2)
         
@@ -570,8 +570,19 @@ class AbstractAnalyzer:
                 do_sample=True,
                 pad_token_id=tokenizer.eos_token_id
             )
-            print(tokenizer.decode(outputs[0], skip_special_tokens=True).strip())
-            return tokenizer.decode(outputs[0], skip_special_tokens=True).strip()
+            print(2)
+
+            decoded_output = tokenizer.decode(outputs[0], skip_special_tokens=True)
+            # Extracting dictionary from the response
+            if "{" in decoded_output and "}" in decoded_output:
+                start = decoded_output.find("{")
+                end = decoded_output.rfind("}") + 1
+                result = decoded_output[start:end]
+                return result.strip()
+            else:
+                raise ValueError("Model did not return a valid dictionary.")
+            # print(tokenizer.decode(outputs[0], skip_special_tokens=True).strip())
+            # return tokenizer.decode(outputs[0], skip_special_tokens=True).strip()
             
         except Exception as e:
             if logger:
