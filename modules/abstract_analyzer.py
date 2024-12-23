@@ -216,7 +216,8 @@ class AbstractAnalyzer:
                     retry_count += 1
                     if retry_count >= max_retries:
                         self._handle_batch_error(start, end, all_responses)
-                        print(e)
+                        # print(e)
+                        
                         break
                     time.sleep(2)
         
