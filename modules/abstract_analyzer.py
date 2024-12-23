@@ -551,15 +551,19 @@ class AbstractAnalyzer:
                 logger.error(f"Error calling Llama model: {str(e)}")
             raise ValueError(f"Llama Error: {str(e)}")
 
-    def _send_to_llama(prompt, access_token, logger=None) -> str:
+    def _send_to_llama(prompt, hf_token, logger=None) -> str:
         """Send prompt to Llama model"""
         # if "HUGGINGFACE_TOKEN" in os.environ:
         #     login(token=os.getenv("HUGGINGFACE_TOKEN"))
         
-        model_name = "meta-llama/Llama-3.2-3B"
-        print(access_token)
-        tokenizer = AutoTokenizer.from_pretrained(model_name, token=access_token)
-        model = AutoModelForCausalLM.from_pretrained(model_name, token=access_token)
+        try:
+            model_name = "meta-llama/Llama-3.2-3B"
+            print(hf_token)
+            tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token)
+            model = AutoModelForCausalLM.from_pretrained(model_name, token=hf_token)
+        except Exception as e:
+            print("Error loading model")
+            print(e)
         
         try:
             system_prompt = "Return only a valid Python dictionary. No other text."
