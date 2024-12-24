@@ -152,6 +152,7 @@ class AbstractAnalyzer:
                 }
             """
             try:
+                # print(model_type, hf_token)
                 return self.analyze_abstract_in_batches(abstract, abstract_number, model_type, hf_token)
             except Exception as e:
                 self.logger.error(f"Analysis failed for abstract {abstract_number}: {str(e)}")
@@ -522,7 +523,7 @@ class AbstractAnalyzer:
             self.logger.error(f"Error calling GPT API: {str(e)}")
             raise ValueError(f"GPT API Error: {str(e)}")
 
-    def _send_to_mistral(prompt: str, access_token, logger=None) -> str:
+    def _send_to_mistral(self, prompt: str, access_token, logger=None) -> str:
         """Send prompt to Llama model"""
         # if "HUGGINGFACE_TOKEN" in os.environ:
         #     login(token=os.getenv("HUGGINGFACE_TOKEN"))
@@ -551,19 +552,19 @@ class AbstractAnalyzer:
                 logger.error(f"Error calling Llama model: {str(e)}")
             raise ValueError(f"Llama Error: {str(e)}")
 
-    def _send_to_llama(prompt, hf_token, logger=None) -> str:
+    def _send_to_llama(self, prompt, hf_token, logger=None) -> str:
         """Send prompt to Llama model"""
         # if "HUGGINGFACE_TOKEN" in os.environ:
         #     login(token=os.getenv("HUGGINGFACE_TOKEN"))
         
         try:
             model_name = "meta-llama/Llama-3.2-3B"
-            print(hf_token)
+            # print(hf_token)
             tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token)
             model = AutoModelForCausalLM.from_pretrained(model_name, token=hf_token)
         except Exception as e:
             print("Error loading model")
-            print(e)
+            # print(e)
         
         try:
             system_prompt = "Return only a valid Python dictionary. No other text."

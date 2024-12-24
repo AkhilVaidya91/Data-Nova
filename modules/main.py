@@ -102,6 +102,7 @@ class DSIAnalysisApp:
            if pd.notna(df_abstracts.iloc[idx]['Combined']):
                try:
                    # Get analysis results
+                #    print(model, hf_token)
                    results = self.analyzer.analyze_abstract(
                        str(df_abstracts.iloc[idx]['Combined']),
                        abstract_number=idx + 1, 
@@ -273,7 +274,7 @@ class DSIAnalysisApp:
                 if st.button("Start Analysis"):
                     try:
                         # Process abstracts
-                        
+                        # print(model, hf_token)
                         df_results = self.process_abstracts(df_abstracts, model, hf_token)
                         
                         # Save and download results
@@ -294,4 +295,6 @@ class DSIAnalysisApp:
 
 def main(dsi_master_df, abstracts_file, op_api_key, model, hf_token = None):
     app = DSIAnalysisApp()
+    # print(op_api_key)
     app.run(dsi_master_df, abstracts_file, op_api_key, model, hf_token)
+    # (df, df_abstracts, openai_key, model, huggingface_key)
