@@ -558,7 +558,7 @@ class AbstractAnalyzer:
         #     login(token=os.getenv("HUGGINGFACE_TOKEN"))
         
         try:
-            model_name = "meta-llama/Llama-3.2-3B"
+            model_name = "meta-llama/Llama-3.2-1B"
             # print(hf_token)
             tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token)
             model = AutoModelForCausalLM.from_pretrained(model_name, token=hf_token)
