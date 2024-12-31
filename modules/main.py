@@ -239,7 +239,8 @@ class DSIAnalysisApp:
         # Here's where the code should go - replace the existing if dsi_master_file block
         if dsi_master_df is not None:
             try:
-                if self.validate_api_key(op_api_key):
+                # if self.validate_api_key(op_api_key):
+                if True:
                     self.analyzer = AbstractAnalyzer(op_api_key)
                     # dsi_master_path = self.save_uploaded_file(dsi_master_file)
                     if dsi_master_df is not None:
@@ -275,6 +276,8 @@ class DSIAnalysisApp:
                     try:
                         # Process abstracts
                         # print(model, hf_token)
+                        if hf_token == None:
+                            hf_token = op_api_key
                         df_results = self.process_abstracts(df_abstracts, model, hf_token)
                         
                         # Save and download results

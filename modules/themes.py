@@ -16,6 +16,7 @@ import PyPDF2
 from io import BytesIO
 import base64
 import modules.main as main
+from modules.models import LLMModelInterface
 
 
 MONGO_URI = os.getenv('MONGO_URI')
@@ -61,8 +62,21 @@ def fetch_perplexity_data(api_key, topic):
         st.error(f"Failed to fetch data from Perplexity API: {e}")
         return ""
 
-def structure_data(api_key, generated_text, columns):
-    prompt = f"You are given a large amount of data that can be structured into a table with many rows. Structure the following data into a JSON format with columns: {columns}. Data: {generated_text}. Ensure that you only output the data in JSON format without any other text at all, not even backtics `` and the word JSON. Do not include any other information in the output."
+def structure_data(api_key, generated_text, columns, model):
+    prompt = f"You are an AI that structures data into JSON format (list of python dictionaries) for converting unstructured text data into tables. Ensure that you have atlest as many rows in the output as much mentioned in the input text. Return the data in such a way that it is a list of dictionaried that can be converted to a pandas dataframe directly. You are given a large amount of data that can be structured into a table with many rows. Structure the following data into a list of JSON format with columns: {columns}. Data: {generated_text}. Ensure that you only output the data in JSON format without any other text at all, not even backtics `` and the word JSON. Do not include any other information in the output. Start your output string with an opening square brace [ and end with a closing square brace ] as it's last characcter of the srting (strictly follow this rule). Ensure that the list of JSON/python dictionaries can be directly parsed to a dataframe without any additional text."
+    interface = LLMModelInterface()
+    if model == "Gemini":
+        structured_data = interface.call_gemini(prompt, api_key)
+        if structured_data[0] != '[':
+            structured_data = '[' + structured_data + ']'
+        try:
+            json_op = json.loads(structured_data)
+            return json_op
+        except Exception as e:
+            st.error(f"Failed to structure data using Gemini: {e}")
+            print(e)
+            return []
+    
     messages = [
         {
             "role": "system",
@@ -455,6 +469,7 @@ def themes_main(username):
         api_keys = current_user.get('api_keys', {})
         openai_key = api_keys.get('openai', "")
         perplexity_key = api_keys.get('perplexity', "")
+        gemini_key = api_keys.get('gemini', "")
     else:
         api_keys = {}
 
@@ -521,9 +536,14 @@ def themes_main(username):
                 # columns = st.text_input("Enter columns (comma-separated):")
                 columns = "Goal, Description, Keywords, Reference links, Examples"
                 st.info("Columns: Goal, Description, Keywords, Reference links, Examples")
+                model = st.selectbox("Select a model for analysis", ["GPT-4o", "Gemini"])
+
                 if st.button("Structure Data"):
                     if columns:
-                        structured_data = structure_data(openai_key, st.session_state.perplexity_text, columns)
+                        if model == "Gemini":
+                            structured_data = structure_data(gemini_key, st.session_state.perplexity_text, columns, model)
+                        elif model == "GPT-4o":
+                            structured_data = structure_data(openai_key, st.session_state.perplexity_text, columns, model)
                         if structured_data:
                             st.session_state.dataframe = pd.DataFrame(structured_data)
                             st.dataframe(st.session_state.dataframe)
@@ -766,30 +786,51 @@ def themes_main(username):
 
                     if document_text:
                         # Define the columns for structuring
-                        columns = "Goals, Description, Keywords, Examples, Reference Links"
-                        
+                        # columns = "Goals, Description, Keywords, Examples, Reference Links"
+                        possible_columns = [
+                            "Introduction", "Keywords", "Abstract", "Title", "Methodology", 
+                            "Results", "Conclusion", "Discussion", "Examples", "Policy", 
+                            "Objectives", "Committee", "Programs", "Goals", "Description",
+                            "Keywords", "Examples", "Reference Links"
+                        ]
+
+                        # Let the user select multiple columns
+                        selected_columns = st.multiselect(
+                            "Select the column names for structuring the documents:",
+                            possible_columns
+                        )
+
+                        # Convert the selected columns into a comma-separated string
+                        columns = ", ".join(selected_columns)
+                        model = st.selectbox("Select a model for analysis", ["GPT-4o", "Gemini"])
+
                         # Structure the content using OpenAI API
-                        structured_data = structure_data(openai_key, document_text, columns)
+                        if st.button("Structure this Document Content"):
 
-                        if structured_data:
-                            # Display the structured data
-                            st.write("**Structured Theme Data:**")
+                            if model == "Gemini":
+                                structured_data = structure_data(gemini_key, document_text, columns, model)
+                            else:
+                                structured_data = structure_data(openai_key, document_text, columns, model)
 
-                            df = pd.DataFrame(structured_data)
-                            st.dataframe(df)
-                            
-                            # Store theme in MongoDB
-                            theme_doc = {
-                                'username': username,
-                                'theme_title': theme_name,
-                                'structured_data': structured_data,
-                                'timestamp': datetime.now()
-                            }
-                            themes_collection.insert_one(theme_doc)
-                            
-                            st.success("Theme generated and saved successfully.")
-                        else:
-                            st.error("Failed to structure document content.")
+                            if structured_data:
+                                # Display the structured data
+                                st.write("**Structured Theme Data:**")
+
+                                df = pd.DataFrame(structured_data)
+                                st.dataframe(df)
+                                
+                                # Store theme in MongoDB
+                                theme_doc = {
+                                    'username': username,
+                                    'theme_title': theme_name,
+                                    'structured_data': structured_data,
+                                    'timestamp': datetime.now()
+                                }
+                                themes_collection.insert_one(theme_doc)
+                                
+                                st.success("Theme generated and saved successfully.")
+                            else:
+                                st.error("Failed to structure document content.")
                     else:
                         st.error("No text extracted from the PDF. Ensure the PDF contains selectable text.")
                     
@@ -823,7 +864,7 @@ def themes_main(username):
 
             ## dropdown for model selection - GPT, Llama, Mistral
 
-            model = st.selectbox("Select a model for analysis", ["GPT-4o", "Llama", "Mistral"])
+            model = st.selectbox("Select a model for analysis", ["GPT-4o", "Llama", "Mistral", "Gemini"])
 
             ## if model is llama or mistral add approved huggingface key
 
@@ -855,7 +896,10 @@ def themes_main(username):
             # st.dataframe(df_abstracts)
 
             if abstracts_file is not None:
-                main.main(df, df_abstracts, openai_key, model, huggingface_key)
+                if model == "Gemini":
+                    main.main(df, df_abstracts, gemini_key, model, huggingface_key)
+                else:
+                    main.main(df, df_abstracts, openai_key, model, huggingface_key)
         
         # uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"], accept_multiple_files=False)
 

@@ -16,7 +16,9 @@ import time
 from transformers import AutoTokenizer, AutoModelForCausalLM
 # from huggingface_hub import login
 import os
+from modules.models import LLMModelInterface
 
+llm_interface = LLMModelInterface()
 
 
 
@@ -179,7 +181,7 @@ class AbstractAnalyzer:
         all_responses = {}
         batch_ranges = [(1, 10)]
         max_retries = 3
-        print(1)
+        # print(1)
         
         for start, end in batch_ranges:
             batch_successful = False
@@ -193,13 +195,16 @@ class AbstractAnalyzer:
                     #st.write("GPT Prompt:",prompt)
 
                     if model_type == "GPT-4o":
-                        raw_response = self._send_to_gpt(prompt)
+                        # raw_response = self._send_to_gpt(prompt)
+                        raw_response = llm_interface.call_openai_gpt4_mini(prompt, hf_token)
                     elif model_type == "Mistral":
                         raw_response = self._send_to_mistral(prompt, hf_token)
                     elif model_type == "Llama":
                         # print(hf_token)
                         # print(len(hf_token))
                         raw_response = self._send_to_llama(prompt, hf_token)
+                    elif model_type == "Gemini":
+                        raw_response = llm_interface.call_gemini(prompt, hf_token)
                     
                     if not raw_response:
                         raise ValueError("Empty GPT response")
@@ -485,8 +490,8 @@ class AbstractAnalyzer:
         
         
         
-        Generate structured JSON response using exactly in above format.
-        
+        Generate structured JSON response using exactly in above format. Give only the JSON and no other text at all, not even the word json or backtics. The response text should be directly parsable as a Python dictionary.
+        DO NOT INCLUDE ANY OTHER TEXT IN THE RESPONSE.    
     
         
         
@@ -578,7 +583,6 @@ class AbstractAnalyzer:
                 do_sample=True,
                 pad_token_id=tokenizer.eos_token_id
             )
-            print(2)
 
             decoded_output = tokenizer.decode(outputs[0], skip_special_tokens=True)
             # Extracting dictionary from the response
