@@ -10,7 +10,6 @@ class LLMModelInterface:
     @staticmethod
     def call_openai_gpt4_mini(prompt: str, api_key: str) -> str:
         """Call OpenAI's GPT-4o Mini model."""
-        print(api_key)
         client = openai.OpenAI(api_key = api_key)
         try:
             response = client.chat.completions.create(

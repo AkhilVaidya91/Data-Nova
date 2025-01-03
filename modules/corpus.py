@@ -444,7 +444,7 @@ def read_pdf_content(file_path):
         st.error(f"Failed to read PDF content: {e}")
         return None
 
-def themes_main(username):
+def corpus_page(username):
     # Initialize session state variables
     if "perplexity_text" not in st.session_state:
         st.session_state.perplexity_text = ""
@@ -461,7 +461,7 @@ def themes_main(username):
     if "current_theme" not in st.session_state:
         st.session_state.current_theme = ""
     
-    tab1, tab2, tab3, tab4 = st.tabs(["Theme Generation", "Corpus Upload", "Doc Theme Generation", "Table Analytics"])
+    tab1, tab2 = st.tabs(["Corpus Upload", "Table Analytics"])
 
     user = db['users']
     current_user = user.find_one({'username': username})
@@ -473,115 +473,115 @@ def themes_main(username):
     else:
         api_keys = {}
 
-    with tab1:
-        if perplexity_key:
-            st.info("""
-            **Theme Generation Guidelines**
+    # with tab1:
+    #     if perplexity_key:
+    #         st.info("""
+    #         **Theme Generation Guidelines**
 
-            When generating a theme, please include the following elements in your prompt:
+    #         When generating a theme, please include the following elements in your prompt:
 
-            - **Theme**: The main subject or overarching idea.
-            - **Subthemes**: Related topics that fall under the main theme.
-            - **Description**: Brief explanations for each subtheme.
-            - **Keywords**: Important terms associated with each subtheme.
-            - **Examples**: Illustrations or scenarios for clarity.
-            """)
-            theme_name = st.text_input("Enter a theme name:")
-            st.session_state.current_theme = theme_name
-            topic = st.text_input("Enter a topic:")
+    #         - **Theme**: The main subject or overarching idea.
+    #         - **Subthemes**: Related topics that fall under the main theme.
+    #         - **Description**: Brief explanations for each subtheme.
+    #         - **Keywords**: Important terms associated with each subtheme.
+    #         - **Examples**: Illustrations or scenarios for clarity.
+    #         """)
+    #         theme_name = st.text_input("Enter a theme name:")
+    #         st.session_state.current_theme = theme_name
+    #         topic = st.text_input("Enter a topic:")
             
-            if st.button("Generate"):
-                if topic:
+    #         if st.button("Generate"):
+    #             if topic:
 
-                    st.session_state.generated_text = fetch_perplexity_data(perplexity_key, topic)
-                    if st.session_state.generated_text:
-                        st.markdown(st.session_state.generated_text)
-                        st.session_state.show_buttons = True
+    #                 st.session_state.generated_text = fetch_perplexity_data(perplexity_key, topic)
+    #                 if st.session_state.generated_text:
+    #                     st.markdown(st.session_state.generated_text)
+    #                     st.session_state.show_buttons = True
 
-                        # Store query and response in MongoDB
-                        chat_logs_collection = db['chat_logs']
-                        chat_log_doc = {
-                            'username': username,
-                            'theme': st.session_state.current_theme,
-                            'query': topic,
-                            'response': st.session_state.generated_text,
-                            'timestamp': datetime.now()
-                        }
-                        chat_logs_collection.insert_one(chat_log_doc)
-                else:
-                    st.warning("Please enter a topic to generate text.")
+    #                     # Store query and response in MongoDB
+    #                     chat_logs_collection = db['chat_logs']
+    #                     chat_log_doc = {
+    #                         'username': username,
+    #                         'theme': st.session_state.current_theme,
+    #                         'query': topic,
+    #                         'response': st.session_state.generated_text,
+    #                         'timestamp': datetime.now()
+    #                     }
+    #                     chat_logs_collection.insert_one(chat_log_doc)
+    #             else:
+    #                 st.warning("Please enter a topic to generate text.")
 
-            # Show Keep/Discard buttons only after generation
-            if st.session_state.show_buttons:
-                col1, col2 = st.columns(2)
-                with col1:
-                    if st.button("Keep"):
-                        st.session_state.perplexity_text = st.session_state.generated_text
-                        st.session_state.generated_text = ""  # Clear generated text
-                        st.session_state.show_buttons = False  # Hide buttons
-                        st.success("Text kept successfully!")
-                        st.rerun()
-                with col2:
-                    if st.button("Discard"):
-                        st.session_state.generated_text = ""  # Clear generated text
-                        st.session_state.show_buttons = False  # Hide buttons
-                        st.warning("Text discarded. Please enter a new topic.")
-                        st.rerun()
+    #         # Show Keep/Discard buttons only after generation
+    #         if st.session_state.show_buttons:
+    #             col1, col2 = st.columns(2)
+    #             with col1:
+    #                 if st.button("Keep"):
+    #                     st.session_state.perplexity_text = st.session_state.generated_text
+    #                     st.session_state.generated_text = ""  # Clear generated text
+    #                     st.session_state.show_buttons = False  # Hide buttons
+    #                     st.success("Text kept successfully!")
+    #                     st.rerun()
+    #             with col2:
+    #                 if st.button("Discard"):
+    #                     st.session_state.generated_text = ""  # Clear generated text
+    #                     st.session_state.show_buttons = False  # Hide buttons
+    #                     st.warning("Text discarded. Please enter a new topic.")
+    #                     st.rerun()
 
-            # Show the structuring options only if there's kept text
-            if st.session_state.perplexity_text:
-                st.subheader("Stored Text")
-                st.markdown(st.session_state.perplexity_text)
+    #         # Show the structuring options only if there's kept text
+    #         if st.session_state.perplexity_text:
+    #             st.subheader("Stored Text")
+    #             st.markdown(st.session_state.perplexity_text)
                 
-                # columns = st.text_input("Enter columns (comma-separated):")
-                columns = "Goal, Description, Keywords, Reference links, Examples"
-                st.info("Columns: Goal, Description, Keywords, Reference links, Examples")
-                model = st.selectbox("Select a model for analysis", ["GPT-4o", "Gemini"])
+    #             # columns = st.text_input("Enter columns (comma-separated):")
+    #             columns = "Goal, Description, Keywords, Reference links, Examples"
+    #             st.info("Columns: Goal, Description, Keywords, Reference links, Examples")
+    #             model = st.selectbox("Select a model for analysis", ["GPT-4o", "Gemini"])
 
-                if st.button("Structure Data"):
-                    if columns:
-                        if model == "Gemini":
-                            structured_data = structure_data(gemini_key, st.session_state.perplexity_text, columns, model)
-                        elif model == "GPT-4o":
-                            structured_data = structure_data(openai_key, st.session_state.perplexity_text, columns, model)
-                        if structured_data:
-                            st.session_state.dataframe = pd.DataFrame(structured_data)
-                            st.dataframe(st.session_state.dataframe)
-                            # theme_title = generate_theme_title(openai_key, st.session_state.perplexity_text)
-                            theme_title = st.session_state.current_theme
-                            st.session_state.theme_title = theme_title
+    #             if st.button("Structure Data"):
+    #                 if columns:
+    #                     if model == "Gemini":
+    #                         structured_data = structure_data(gemini_key, st.session_state.perplexity_text, columns, model)
+    #                     elif model == "GPT-4o":
+    #                         structured_data = structure_data(openai_key, st.session_state.perplexity_text, columns, model)
+    #                     if structured_data:
+    #                         st.session_state.dataframe = pd.DataFrame(structured_data)
+    #                         st.dataframe(st.session_state.dataframe)
+    #                         # theme_title = generate_theme_title(openai_key, st.session_state.perplexity_text)
+    #                         theme_title = st.session_state.current_theme
+    #                         st.session_state.theme_title = theme_title
                     
                         
-                        theme_data = {
-                            'username': username,
-                            'theme_title': theme_title,
-                            'structured_data': structured_data,
-                            'created_at': datetime.now(),
-                            'updated_at': datetime.now()
-                        }
+    #                     theme_data = {
+    #                         'username': username,
+    #                         'theme_title': theme_title,
+    #                         'structured_data': structured_data,
+    #                         'created_at': datetime.now(),
+    #                         'updated_at': datetime.now()
+    #                     }
                         
-                        themes_collection.insert_one(theme_data)
-                        st.success(f"Structured table stored in MongoDB with theme title '{theme_title}' successfully!")
-                    else:
-                        st.warning("Please enter columns to structure data.")
+    #                     themes_collection.insert_one(theme_data)
+    #                     st.success(f"Structured table stored in MongoDB with theme title '{theme_title}' successfully!")
+    #                 else:
+    #                     st.warning("Please enter columns to structure data.")
 
-            # Add Chat History expander
-            if st.session_state.current_theme:
-                with st.expander("Chat History"):
-                    chat_logs_collection = db['chat_logs']
-                    chat_logs = chat_logs_collection.find({
-                        'username': username,
-                        'theme': st.session_state.current_theme
-                    }).sort('timestamp', -1)
-                    for chat in chat_logs:
-                        st.markdown(f"**You:** {chat['query']}")
-                        st.markdown(f"**Perplexity:** {chat['response']}")
+    #         # Add Chat History expander
+    #         if st.session_state.current_theme:
+    #             with st.expander("Chat History"):
+    #                 chat_logs_collection = db['chat_logs']
+    #                 chat_logs = chat_logs_collection.find({
+    #                     'username': username,
+    #                     'theme': st.session_state.current_theme
+    #                 }).sort('timestamp', -1)
+    #                 for chat in chat_logs:
+    #                     st.markdown(f"**You:** {chat['query']}")
+    #                     st.markdown(f"**Perplexity:** {chat['response']}")
 
-        else:
-            st.warning("Please set your Perplexity API key in your profile settings.")
+    #     else:
+    #         st.warning("Please set your Perplexity API key in your profile settings.")
 
     # Vector Search Tab
-    with tab2:
+    with tab1:
         st.subheader("Corpus Upload")
         st.info("""
         **Corpus Structuring Guidelines**
@@ -752,95 +752,95 @@ def themes_main(username):
                     st.error(f"Error structuring documents: {e}")
                 # finally:
                     # client.close()
-    with tab3:
-        st.subheader("Document Theme Generation")
-        st.info("""
-        **Document Theme Generation Guidelines**
+    # with tab3:
+    #     st.subheader("Document Theme Generation")
+    #     st.info("""
+    #     **Document Theme Generation Guidelines**
 
-        - **File Format**: Please upload your documents in **PDF format** for text parsing. If your documents are in Excel or other formats, kindly convert them to PDF before uploading.
-        - **Content Quality**: Ensure that your PDFs contain selectable text for accurate text extraction.
-        - **Naming Convention**: Use descriptive file names to help organize your corpus effectively.
-        """)
+    #     - **File Format**: Please upload your documents in **PDF format** for text parsing. If your documents are in Excel or other formats, kindly convert them to PDF before uploading.
+    #     - **Content Quality**: Ensure that your PDFs contain selectable text for accurate text extraction.
+    #     - **Naming Convention**: Use descriptive file names to help organize your corpus effectively.
+    #     """)
         
-        # Theme name input
-        theme_name = st.text_input("Enter a theme name:", key="theme_name_pdf")
+    #     # Theme name input
+    #     theme_name = st.text_input("Enter a theme name:", key="theme_name_pdf")
 
-        # PDF file uploader
-        uploaded_file = st.file_uploader(
-            "Upload a PDF file", 
-            type=["pdf"],
-            accept_multiple_files=False
-        )
+    #     # PDF file uploader
+    #     uploaded_file = st.file_uploader(
+    #         "Upload a PDF file", 
+    #         type=["pdf"],
+    #         accept_multiple_files=False
+    #     )
 
-        if theme_name and uploaded_file:
-            if openai_key:
-                try:
-                    # Save the uploaded PDF to a temporary location
-                    temp_pdf_path = os.path.join(UPLOAD_DIR, uploaded_file.name)
-                    # if not os.path.exists("temp"):
-                    #     os.makedirs("temp")
-                    with open(temp_pdf_path, "wb") as f:
-                        f.write(uploaded_file.getbuffer())
+    #     if theme_name and uploaded_file:
+    #         if openai_key:
+    #             try:
+    #                 # Save the uploaded PDF to a temporary location
+    #                 temp_pdf_path = os.path.join(UPLOAD_DIR, uploaded_file.name)
+    #                 # if not os.path.exists("temp"):
+    #                 #     os.makedirs("temp")
+    #                 with open(temp_pdf_path, "wb") as f:
+    #                     f.write(uploaded_file.getbuffer())
                     
-                    document_text = read_pdf_content(temp_pdf_path)
+    #                 document_text = read_pdf_content(temp_pdf_path)
 
-                    if document_text:
-                        # Define the columns for structuring
-                        # columns = "Goals, Description, Keywords, Examples, Reference Links"
-                        possible_columns = [
-                            "Introduction", "Keywords", "Abstract", "Title", "Methodology", 
-                            "Results", "Conclusion", "Discussion", "Examples", "Policy", 
-                            "Objectives", "Committee", "Programs", "Goals", "Description",
-                            "Keywords", "Examples", "Reference Links"
-                        ]
+    #                 if document_text:
+    #                     # Define the columns for structuring
+    #                     # columns = "Goals, Description, Keywords, Examples, Reference Links"
+    #                     possible_columns = [
+    #                         "Introduction", "Keywords", "Abstract", "Title", "Methodology", 
+    #                         "Results", "Conclusion", "Discussion", "Examples", "Policy", 
+    #                         "Objectives", "Committee", "Programs", "Goals", "Description",
+    #                         "Keywords", "Examples", "Reference Links"
+    #                     ]
 
-                        # Let the user select multiple columns
-                        selected_columns = st.multiselect(
-                            "Select the column names for structuring the documents:",
-                            possible_columns
-                        )
+    #                     # Let the user select multiple columns
+    #                     selected_columns = st.multiselect(
+    #                         "Select the column names for structuring the documents:",
+    #                         possible_columns
+    #                     )
 
-                        # Convert the selected columns into a comma-separated string
-                        columns = ", ".join(selected_columns)
-                        model = st.selectbox("Select a model for analysis", ["GPT-4o", "Gemini"])
+    #                     # Convert the selected columns into a comma-separated string
+    #                     columns = ", ".join(selected_columns)
+    #                     model = st.selectbox("Select a model for analysis", ["GPT-4o", "Gemini"])
 
-                        # Structure the content using OpenAI API
-                        if st.button("Structure this Document Content"):
+    #                     # Structure the content using OpenAI API
+    #                     if st.button("Structure this Document Content"):
 
-                            if model == "Gemini":
-                                structured_data = structure_data(gemini_key, document_text, columns, model)
-                            else:
-                                structured_data = structure_data(openai_key, document_text, columns, model)
+    #                         if model == "Gemini":
+    #                             structured_data = structure_data(gemini_key, document_text, columns, model)
+    #                         else:
+    #                             structured_data = structure_data(openai_key, document_text, columns, model)
 
-                            if structured_data:
-                                # Display the structured data
-                                st.write("**Structured Theme Data:**")
+    #                         if structured_data:
+    #                             # Display the structured data
+    #                             st.write("**Structured Theme Data:**")
 
-                                df = pd.DataFrame(structured_data)
-                                st.dataframe(df)
+    #                             df = pd.DataFrame(structured_data)
+    #                             st.dataframe(df)
                                 
-                                # Store theme in MongoDB
-                                theme_doc = {
-                                    'username': username,
-                                    'theme_title': theme_name,
-                                    'structured_data': structured_data,
-                                    'timestamp': datetime.now()
-                                }
-                                themes_collection.insert_one(theme_doc)
+    #                             # Store theme in MongoDB
+    #                             theme_doc = {
+    #                                 'username': username,
+    #                                 'theme_title': theme_name,
+    #                                 'structured_data': structured_data,
+    #                                 'timestamp': datetime.now()
+    #                             }
+    #                             themes_collection.insert_one(theme_doc)
                                 
-                                st.success("Theme generated and saved successfully.")
-                            else:
-                                st.error("Failed to structure document content.")
-                    else:
-                        st.error("No text extracted from the PDF. Ensure the PDF contains selectable text.")
+    #                             st.success("Theme generated and saved successfully.")
+    #                         else:
+    #                             st.error("Failed to structure document content.")
+    #                 else:
+    #                     st.error("No text extracted from the PDF. Ensure the PDF contains selectable text.")
                     
-                    # Clean up temporary file
-                    os.remove(temp_pdf_path)
-                except Exception as e:
-                    st.error(f"An error occurred: {e}")
-            else:
-                st.warning("Please set your OpenAI API key in your profile settings.")
-    with tab4:
+    #                 # Clean up temporary file
+    #                 os.remove(temp_pdf_path)
+    #             except Exception as e:
+    #                 st.error(f"An error occurred: {e}")
+    #         else:
+    #             st.warning("Please set your OpenAI API key in your profile settings.")
+    with tab2:
         st.info("Upload an Excel (.xlsx) file for extrapolation analysis. This module analyzes columns of a table, extrapolates the data for new insights and structures the data into a new excel file.")
 
         ## select a theme from the available themes

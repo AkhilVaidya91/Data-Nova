@@ -3,7 +3,7 @@ import os
 # import sqlite3
 import hashlib
 from pymongo import MongoClient
-from modules import themes, dashboard, analytics
+from modules import corpus, dashboard, analytics, master_theme
 from utils import instagram_page, tripadvisor_page, website_page, facebook_page, amazon_page, booking_page, google_news_page, youtube_page, twitter_page, flickr_page, google_reviews_page
 
 MONGO_URI = os.getenv('MONGO_URI')
@@ -121,7 +121,7 @@ def main_app():
 
     if not os.path.exists(op_path):
         os.makedirs(op_path)
-    tabs = ["📊 Data Scraping", "🎨 Theme Generation (reference master)", "📈 Analytics", "🗂️ Dashboard"]
+    tabs = ["📊 Data Scraping", "🎨 Theme Generation (reference master)", "📚 Corpus Handling", "📈 Analytics", "🗂️ Dashboard"]
     active_tab = st.sidebar.selectbox("Select Tab", tabs, index=tabs.index(st.session_state.get('active_tab', "📊 Data Scraping")))
     if active_tab == "📊 Data Scraping":
         st.session_state.active_tab = "📊 Data Scraping"
@@ -197,7 +197,12 @@ def main_app():
     
     elif active_tab == "🎨 Theme Generation (reference master)":
         st.session_state.active_tab = "🎨 Theme Generation (reference master)"
-        themes.themes_main(st.session_state.username)
+        # themes.themes_main(st.session_state.username)
+        master_theme.themes_main(st.session_state.username)
+
+    elif active_tab == "📚 Corpus Handling":
+        st.session_state.active_tab = "📚 Corpus Handling"
+        corpus.corpus_page(st.session_state.username)
 
     elif active_tab == "📈 Analytics":
         st.session_state.active_tab = "📈 Analytics"

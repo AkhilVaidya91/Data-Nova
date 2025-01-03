@@ -373,7 +373,8 @@ class AbstractAnalyzer:
         for theme_id, theme in self.dsi_structure.themes.items():
             try:
                 # Strip any text after numbers and convert to int
-                theme_num = int(theme_id.replace('T', '').split()[0])
+                # theme_num = int(theme_id.replace('T', '').split()[0])
+                theme_num = int(theme_id) # Use direct theme number
                 if start_theme <= theme_num <= end_theme:
                     desc = theme['Description']
                     examples = theme.get('matching_examples', [])

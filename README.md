@@ -1,5 +1,5 @@
 ---
-title: Data-Nova
+title: Digital Nova
 emoji: 📊
 colorFrom: green
 colorTo: indigo
