@@ -19,7 +19,7 @@ class LLMModelInterface:
                 {"role": "user", "content": prompt}
             ],
                 max_tokens=2000,
-                temperature=0.3
+                temperature=0.2
             )
             # print(response.choices[0].message.content.strip())
             return response.choices[0].message.content.strip()

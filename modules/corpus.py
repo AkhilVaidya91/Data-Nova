@@ -15,8 +15,9 @@ from numpy.linalg import norm
 import PyPDF2
 from io import BytesIO
 import base64
-import modules.main as main
+# import modules.main as main
 from modules.models import LLMModelInterface
+from modules import table_analytics
 
 
 MONGO_URI = os.getenv('MONGO_URI')
@@ -270,7 +271,7 @@ def structure_document_content(api_key, document_text, columns):
     # columns = str(columns)
     prompt = f"""Structure the following document content into a single row with these columns: {columns}
     The if there is a column called goals or keywords, then goals colums should contain the main theme goals that can be identified, keywords should list out atleast 8 keywords per goal.
-    
+    Note that your task is to structure the content under the columns and not summarize, so ensure that you areextracting as much text as possible from the original sourse in extreme detail preferably in the exact words as the original content. The resposnses could go as long as a few hundred words (roughly up to 1000 words), if the document is long enough.
     Document content: {document_text}
     Ensure that your response is extremely detailed and covers every single important point from the document. If it has names or dates or project names mentioned, ensure that they are included in the response.
     Return only a list of flat JSON objects with the specified columns as keys and appropriate content as values. The values should either be strings or numbers, no nested objects or lists at all. Note that this JSON will be passed on to pandas to convert to a dataframe, so create the dataframe accordingly. DO NOT USE THE WORD JSON IN RESPONSE OR EVEN BACKTICS ```. Start and end your response with curley beackets. 
@@ -858,28 +859,18 @@ def corpus_page(username):
             columns = theme_data.get('columns', [])
             st.write(f"Structured Data for Theme '{selected_theme}':")
             df = pd.DataFrame(structured_data)
-            ## add a column called ID and set it as the index
-            df['ID'] = df.index
-            st.dataframe(df)
+            # df['ID'] = df.index
+            st.dataframe(df)    ## --> this is the theme df
+            selected_columns_themes = st.multiselect("Select columns for context passing", df.columns)
 
             ## dropdown for model selection - GPT, Llama, Mistral
-
             model = st.selectbox("Select a model for analysis", ["GPT-4o", "Llama", "Mistral", "Gemini"])
-
-            ## if model is llama or mistral add approved huggingface key
-
             if model in ["Llama", "Mistral"]:
                 huggingface_key = st.text_input("Enter Huggingface API key:")
             else:
                 huggingface_key = None
 
-            st.markdown("""
-            ### Required File Formats - Abstract File:
-
-            - Excel file (.xlsx) with column:
-                1. Abstract (containing research abstracts to analyze)
-            """)
-            abstracts_file = st.file_uploader("Upload Excel file with abstracts", type=['xlsx'])
+            abstracts_file = st.file_uploader("Upload Excel file of corpus", type=['xlsx'])
             if abstracts_file:
                 df_abstracts = pd.read_excel(abstracts_file)
 
@@ -887,19 +878,28 @@ def corpus_page(username):
 
                 st.dataframe(df_abstracts)
 
-            ## show all columns checkbox to select columns for concatination
-
                 selected_columns = st.multiselect("Select columns for analysis", abstracts_file_columns)
 
-                df_abstracts["Combined"] = df_abstracts[selected_columns].apply(lambda x: ' '.join(x.dropna().astype(str)), axis=1)
+                # df_abstracts["Combined"] = df_abstracts[selected_columns].apply(lambda x: ' '.join(x.dropna().astype(str)), axis=1)
 
             # st.dataframe(df_abstracts)
 
-            if abstracts_file is not None:
+            if abstracts_file is not None and st.button("Analyze Table"):
                 if model == "Gemini":
-                    main.main(df, df_abstracts, gemini_key, model, huggingface_key)
+                    # main.main(df, df_abstracts, gemini_key, model, huggingface_key)
+                    new_df = table_analytics.table_analytics_main(df, df_abstracts, selected_columns_themes, selected_columns, gemini_key, model)
+                elif model in ["Llama", "Mistral"]:
+                    new_df = table_analytics.table_analytics_main(df, df_abstracts, selected_columns_themes, selected_columns, huggingface_key, model)
                 else:
-                    main.main(df, df_abstracts, openai_key, model, huggingface_key)
+                    new_df = table_analytics.table_analytics_main(df, df_abstracts, selected_columns_themes, selected_columns, openai_key, model)
+
+                    ## concatinating the new_df with the df_abstracts
+
+                final_df = pd.concat([df_abstracts, new_df], axis=1)
+
+                st.write("Final DataFrame:")
+                st.dataframe(final_df)
+
         
         # uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"], accept_multiple_files=False)
 
