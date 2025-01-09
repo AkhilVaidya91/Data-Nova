@@ -263,7 +263,7 @@ def analytics_page(username):
             analytics_data = []
 
             for idx, row in theme_df.iterrows():
-                goal = row['Goal']
+                goal = row['Goals']
                 description = row['Description']
                 # keywords = row['Keywords']
 
@@ -300,7 +300,7 @@ def analytics_page(username):
                                     'Analytics Title': analytics_title,
                                     'Theme Title': selected_theme,
                                     'Corpus Name': selected_corpus,
-                                    'Goal': goal,
+                                    'Goals': goal,
                                     'Document Name': doc_name,
                                     'Similarity Score': max_desc_similarity,
                                     'Matching Text': matching_desc_text,

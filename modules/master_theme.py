@@ -18,6 +18,9 @@ import base64
 import modules.main as main
 from modules.models import LLMModelInterface
 
+UPLOAD_DIR = "uploads"
+if not os.path.exists(UPLOAD_DIR):
+    os.makedirs(UPLOAD_DIR)
 
 MONGO_URI = os.getenv('MONGO_URI')
 MONGO_URI = "mongodb+srv://akhilvaidya22:qN2dxc1cpwD64TeI@digital-nova.cbbsn.mongodb.net/?retryWrites=true&w=majority&appName=digital-nova"
@@ -594,9 +597,7 @@ def themes_main(username):
     #     """)
         
     #     # Create uploads directory if it doesn't exist
-    #     UPLOAD_DIR = "uploads"
-    #     if not os.path.exists(UPLOAD_DIR):
-    #         os.makedirs(UPLOAD_DIR)
+
         
     #     # Corpus name input
     #     corpus_name = st.text_input("Enter a name for your corpus:")

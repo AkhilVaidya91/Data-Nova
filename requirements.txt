@@ -22,3 +22,4 @@ pytrends
 plotly
 transformers
 torch
+huggingface-hub

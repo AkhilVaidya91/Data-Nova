@@ -1,6 +1,7 @@
 from transformers import pipeline
 import openai
 import google.generativeai as gemini
+from huggingface_hub import InferenceClient
 
 class LLMModelInterface:
     def __init__(self):
@@ -55,13 +56,27 @@ class LLMModelInterface:
     def call_llama(prompt: str, api_key: str) -> str:
         """Call Llama 3.2 3B model using Hugging Face Transformers."""
         try:
-            hf_pipeline = pipeline(
-                "text-generation",
-                model="meta-llama/Llama-3.2-3b",
-                token=api_key
+            # print(prompt)
+            # hf_pipeline = pipeline(
+            #     "text-generation",
+            #     model="meta-llama/Llama-3.2-3b",
+            #     token=api_key
+            # )
+            # response = hf_pipeline(prompt, max_length=500, temperature=0.4)
+            # return response[0]['generated_text'].strip()
+            client = InferenceClient(api_key=api_key)
+            messages = [
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+            completion = client.chat.completions.create(
+                model="meta-llama/Llama-3.2-3B-Instruct", 
+                messages=messages, 
+                max_tokens=500
             )
-            response = hf_pipeline(prompt, max_length=500, temperature=0.4)
-            return response[0]['generated_text'].strip()
+            return completion.choices[0].message.content.strip()
         except Exception as e:
             return f"Error calling Llama 3.2 3B: {e}"
 
@@ -69,13 +84,26 @@ class LLMModelInterface:
     def call_mistral(prompt: str, api_key: str) -> str:
         """Call Mistral 7B model using Hugging Face Transformers."""
         try:
-            hf_pipeline = pipeline(
-                "text-generation",
-                model="mistral/Mistral-7B",
-                use_auth_token=api_key
+            # hf_pipeline = pipeline(
+            #     "text-generation",
+            #     model="mistral/Mistral-7B",
+            #     use_auth_token=api_key
+            # )
+            # response = hf_pipeline(prompt, max_length=500, temperature=0.4)
+            # return response[0]['generated_text'].strip()
+            client = InferenceClient(api_key=api_key)
+            messages = [
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+            completion = client.chat.completions.create(
+                model="mistralai/Mixtral-8x7B-Instruct-v0.1", 
+                messages=messages, 
+                max_tokens=500
             )
-            response = hf_pipeline(prompt, max_length=500, temperature=0.4)
-            return response[0]['generated_text'].strip()
+            return completion.choices[0].message.content.strip()
         except Exception as e:
             return f"Error calling Mistral 7B: {e}"
 

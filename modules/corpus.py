@@ -218,7 +218,7 @@ def search_vectors(query_text, k, mongodb_uri, openai_api_key):
     # finally:
     #     client.close()
 
-def process_pdf_and_create_vectors(file_path, file_name, openai_api_key, chunk_size=50):
+def process_pdf_and_create_vectors(file_path, file_name, openai_api_key, chunk_size=1000):
     """
     Process a PDF file and create vectors for chunks of text
     """
@@ -291,7 +291,7 @@ def structure_document_content(api_key, document_text, columns):
     try:
         client = OpenAI(api_key=api_key)
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4o-mini",
             messages=messages,
             temperature=0.1
         )
@@ -692,7 +692,7 @@ def corpus_page(username):
             possible_columns = [
                 "Introduction", "Keywords", "Abstract", "Title", "Methodology", 
                 "Results", "Conclusion", "Discussion", "Examples", "Policy", 
-                "Objectives", "Committee", "Programs"
+                "Objectives", "Committee", "Programs", "Projects", "Initiatives"
             ]
 
             # Let the user select multiple columns
