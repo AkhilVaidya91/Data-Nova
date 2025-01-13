@@ -1,7 +1,15 @@
-from transformers import pipeline
 import openai
 import google.generativeai as gemini
 from huggingface_hub import InferenceClient
+from pymongo import MongoClient
+import os
+import tensorflow as tf
+import tensorflow_hub as hub
+import torch
+from transformers import AutoTokenizer, DistilBertModel
+
+USE_MODULE_URL = "https://tfhub.dev/google/universal-sentence-encoder/4"
+USE_MODEL = hub.load(USE_MODULE_URL)
 
 class LLMModelInterface:
     def __init__(self):
@@ -32,10 +40,8 @@ class LLMModelInterface:
         """Call Google's Gemini model via Generative AI API."""
         gemini.configure(api_key=api_key)
         try:
-            # print(prompt)
             model = gemini.GenerativeModel("gemini-1.5-flash")
             response = model.generate_content(prompt)
-            # print(response)
             text = response.text
 
             if disable_parse == True:
@@ -47,7 +53,6 @@ class LLMModelInterface:
                 return result.strip()
             else:
                 raise ValueError("Model did not return a valid dictionary.")
-            # return response.text
         except Exception as e:
             print(e)
             return f"Error calling Gemini model: {e}"
@@ -56,14 +61,7 @@ class LLMModelInterface:
     def call_llama(prompt: str, api_key: str) -> str:
         """Call Llama 3.2 3B model using Hugging Face Transformers."""
         try:
-            # print(prompt)
-            # hf_pipeline = pipeline(
-            #     "text-generation",
-            #     model="meta-llama/Llama-3.2-3b",
-            #     token=api_key
-            # )
-            # response = hf_pipeline(prompt, max_length=500, temperature=0.4)
-            # return response[0]['generated_text'].strip()
+
             client = InferenceClient(api_key=api_key)
             messages = [
                 {
@@ -84,13 +82,7 @@ class LLMModelInterface:
     def call_mistral(prompt: str, api_key: str) -> str:
         """Call Mistral 7B model using Hugging Face Transformers."""
         try:
-            # hf_pipeline = pipeline(
-            #     "text-generation",
-            #     model="mistral/Mistral-7B",
-            #     use_auth_token=api_key
-            # )
-            # response = hf_pipeline(prompt, max_length=500, temperature=0.4)
-            # return response[0]['generated_text'].strip()
+
             client = InferenceClient(api_key=api_key)
             messages = [
                 {
@@ -151,6 +143,49 @@ class LLMModelInterface:
             return response['embedding']
         except Exception as e:
             raise RuntimeError(f"Gemini Embedding Error: {str(e)}")
+        
+    @staticmethod
+    def embed_use(text: str):
+        """
+        Generate text embeddings using Google's Universal Sentence Encoder (USE).
+
+        Parameters:
+        - text (str): The text string to be embedded.
+
+        Returns:
+        - List[float]: The embedding vector as a list of floats.
+        """
+        try:
+            embeddings = USE_MODEL([text])
+            embedding = embeddings.numpy().tolist()
+            embedding = embedding[0]
+            return embedding
+        except Exception as e:
+            raise RuntimeError(f"USE Embedding Error: {str(e)}")
+        
+    @staticmethod
+    def embed_distilBERT(text):
+        """
+        Generate embeddings for input text using DistilBERT
+        
+        Args:
+            text (str): Input text to embed
+            
+        Returns:
+            numpy.ndarray: Embedding vector (768 dimensions)
+        """
+        tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
+        model = DistilBertModel.from_pretrained("distilbert-base-uncased")
+        
+        inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True, max_length=512)
+        
+        with torch.no_grad():
+            outputs = model(**inputs)
+
+        embeddings = outputs.last_hidden_state.mean(dim=1)
+        embedding_vector = embeddings.squeeze().numpy()
+        
+        return embedding_vector
 
 
 # Example usage:

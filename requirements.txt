@@ -23,3 +23,5 @@ plotly
 transformers
 torch
 huggingface-hub
+tensorflow
+tensorflow-hub

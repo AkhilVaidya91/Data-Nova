@@ -3,7 +3,7 @@ import os
 # import sqlite3
 import hashlib
 from pymongo import MongoClient
-from modules import corpus, dashboard, analytics, master_theme
+from modules import corpus_upload, dashboard, analytics, theme_upload
 from utils import instagram_page, tripadvisor_page, website_page, facebook_page, amazon_page, booking_page, google_news_page, youtube_page, twitter_page, flickr_page, google_reviews_page
 
 MONGO_URI = os.getenv('MONGO_URI')
@@ -12,6 +12,8 @@ MONGO_URI = "mongodb+srv://akhilvaidya22:qN2dxc1cpwD64TeI@digital-nova.cbbsn.mon
 client = MongoClient(MONGO_URI)
 db = client['digital_nova']
 users_collection = db['users']
+corpus_collection = db['corpus']
+theme_collection = db['themes']
 
 # Helper functions
 def make_hashes(password):
@@ -107,6 +109,15 @@ def main_app():
     st.title("🚀 Digital Nova")
     st.subheader("Your GenAI-based research companion")
     op_path = os.getenv('OP_PATH', 'output')
+    model_selections = ["OpenAI", "Gemini", "Llama", "Mistral"]
+    embedding_model_selections = ["OpenAI", "Gemini", "USE", "MiniLM - distilBERT"]
+    embedding_choice = st.sidebar.selectbox("Select Embedding Model", embedding_model_selections)
+    model_choice = st.sidebar.selectbox("Select LLM", model_selections)
+    api_key_sidebar_input = st.sidebar.text_input("Enter API Key")
+
+    st.session_state.model_choice = model_choice
+    st.session_state.embedding_choice = embedding_choice
+    st.session_state.api_key = api_key_sidebar_input
 
     user = st.session_state.username
 
@@ -197,16 +208,18 @@ def main_app():
     
     elif active_tab == "🎨 Theme Generation (reference master)":
         st.session_state.active_tab = "🎨 Theme Generation (reference master)"
-        # themes.themes_main(st.session_state.username)
-        master_theme.themes_main(st.session_state.username)
+        # master_theme.themes_main(st.session_state.username)
+        theme_upload.theme_page(st.session_state.username, st.session_state.embedding_choice, st.session_state.api_key)
 
     elif active_tab == "📚 Corpus Handling":
         st.session_state.active_tab = "📚 Corpus Handling"
-        corpus.corpus_page(st.session_state.username)
+        # corpus.corpus_page(st.session_state.username)
+        corpus_upload.corpus_page(st.session_state.username, st.session_state.embedding_choice, st.session_state.api_key)
 
     elif active_tab == "📈 Analytics":
         st.session_state.active_tab = "📈 Analytics"
-        analytics.analytics_page(st.session_state.username)
+        # analytics.analytics_page(st.session_state.username)
+        analytics.analytics_page(st.session_state.username, st.session_state.model_choice, st.session_state.api_key)
 
     elif active_tab == "🗂️ Dashboard":
         st.session_state.active_tab = "🗂️ Dashboard"

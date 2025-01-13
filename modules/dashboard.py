@@ -14,6 +14,7 @@ users_collection = db['users']
 output_files_collection = db['output_files']
 corpus_collection = db['corpus']
 themes_collection = db['themes']
+analytics_collection = db['analytics']
 fs = GridFS(db)
 
 def get_user_info(username):
@@ -153,18 +154,21 @@ def display_dashboard(username):
                     # Display the list of files
                     st.write("**Files in corpus:**")
                     for file in corpus.get('files', []):
-                        st.write(f"- {file}")
+                        # print(1)
+                        # print(file)
+                        filename = file.get('filename', 'Unknown')
+                        st.write(f"- {filename}")
                     
                     # Display structured data if available
-                    if 'structured_data' in corpus:
-                        st.write("**Structured Data:**")
-                        try:
-                            df = pd.DataFrame(corpus['structured_data'])
-                            st.dataframe(df, use_container_width=True)
-                        except Exception as e:
-                            st.error(f"Error displaying structured data: {str(e)}")
-                    else:
-                        st.info("No structured data available for this corpus.")
+                    # if 'structured_data' in corpus:
+                    #     st.write("**Structured Data:**")
+                    #     try:
+                    #         df = pd.DataFrame(corpus['structured_data'])
+                    #         st.dataframe(df, use_container_width=True)
+                    #     except Exception as e:
+                    #         st.error(f"Error displaying structured data: {str(e)}")
+                    # else:
+                    #     st.info("No structured data available for this corpus.")
         else:
             st.write("No corpuses found.")
 
@@ -174,10 +178,10 @@ def display_dashboard(username):
         themes = get_user_themes(username)
         if themes:
             for theme in themes:
-                with st.expander(theme['theme_title']):
+                with st.expander(theme['theme_name']):
                     st.write("**Structured Data:**")
                     try:
-                        df = pd.DataFrame(theme['structured_data'])
+                        df = pd.DataFrame(theme['structured_df'])
                         st.dataframe(df, use_container_width=True)
                     except Exception as e:
                         st.error(f"Error displaying theme data: {str(e)}")
@@ -189,8 +193,8 @@ def display_dashboard(username):
         st.subheader("Analytics")
 
         # Fetch analytics data for the user
-        theme_analytics_collection = db['theme_analytics']
-        analytics_cursor = theme_analytics_collection.find({'Username': username})
+        # theme_analytics_collection = db['theme_analytics']
+        analytics_cursor = analytics_collection.find({'Username': username})
         analytics_data = list(analytics_cursor)
 
         if analytics_data:
@@ -198,14 +202,17 @@ def display_dashboard(username):
             from collections import defaultdict
             analytics_groups = defaultdict(list)
             for data in analytics_data:
-                analytics_title = data.get('Analytics Title', 'Untitled Analytics')
-                analytics_groups[analytics_title].append(data)
+                # analytics_title = data.get('Analytics Title', 'Untitled Analytics')
+                theme = data.get('theme', 'Untitled Theme')
+                corpus = data.get('corpus', 'Untitled Corpus')
+                name = f"{theme} - {corpus}"
+                analytics_groups[name].append(data)
 
             # Iterate over each analytics group
             for title, data_list in analytics_groups.items():
                 with st.expander(title):
                     # Convert the list of data into a DataFrame
-                    analytics_df = pd.DataFrame(data_list)
+                    analytics_df = pd.DataFrame(data_list.get('result', []))
 
                     # Remove the MongoDB '_id' field if present
                     if '_id' in analytics_df.columns:
