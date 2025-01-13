@@ -25,3 +25,4 @@ torch
 huggingface-hub
 tensorflow
 tensorflow-hub
+spacy
