@@ -15,6 +15,7 @@ output_files_collection = db['output_files']
 corpus_collection = db['corpus']
 themes_collection = db['themes']
 analytics_collection = db['analytics']
+synthesis_collection = db['synthesis']
 fs = GridFS(db)
 
 def get_user_info(username):
@@ -95,7 +96,7 @@ def display_dashboard(username):
         return
 
     # Create tabs
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["User Info", "API Keys", "Scraped Files", "Uploaded Corpuses", "Themes", "Analytics"])
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["User Info", "API Keys", "Scraped Files", "Uploaded Corpuses", "Themes", "Analytics", "Synthesis"])
 
     with tab1:
         # User Info
@@ -232,6 +233,44 @@ def display_dashboard(username):
                     # )
         else:
             st.write("No analytics data found.")
+
+    with tab7:
+        # Analytics
+        st.subheader("Literature Synthesis")
+
+        # Fetch analytics data for the user
+        # theme_analytics_collection = db['theme_analytics']
+        synthesis_cursor = synthesis_collection.find({'Username': username})
+        synthesis_data = list(synthesis_cursor)
+
+        if synthesis_data:
+            # Group analytics data by 'Analytics Title'
+            from collections import defaultdict
+            synthesis_groups = defaultdict(list)
+            for data in synthesis_data:
+                # analytics_title = data.get('Analytics Title', 'Untitled Analytics')
+                # theme = data.get('theme', 'Untitled Theme')
+                name = data.get('synthesis_name', 'Untitled Synthesis')
+                # name = f"{theme} - {corpus}"
+                synthesis_groups[name].append(data)
+
+            # Iterate over each analytics group
+            for title, data_list in synthesis_groups.items():
+                with st.expander(title):
+                    # Convert the list of data into a DataFrame
+                    synthesis_df = pd.DataFrame(data_list.get('structured_data', []))
+
+                    # Remove the MongoDB '_id' field if present
+                    if '_id' in synthesis_df.columns:
+                        synthesis_df.drop(columns=['_id'], inplace=True)
+
+                    # Display the DataFrame
+                    st.dataframe(synthesis_df, use_container_width=True)
+
+            
+        else:
+            st.write("No synthesis data found.")
+
 
 def dashboard():
     if 'username' in st.session_state:

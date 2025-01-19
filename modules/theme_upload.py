@@ -108,7 +108,6 @@ def structure_data(api_key, generated_text, columns, model):
 def theme_page(username, model, api_key):
     """Page to handle theme upload and processing."""
     st.subheader("Reference Master Theme Upload")
-    st.info("")
     if "perplexity_text" not in st.session_state:
         st.session_state.perplexity_text = ""
     if "generated_text" not in st.session_state:

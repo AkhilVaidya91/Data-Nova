@@ -41,6 +41,29 @@ class LLMModelInterface:
         gemini.configure(api_key=api_key)
         try:
             model = gemini.GenerativeModel("gemini-1.5-flash")
+            # print(prompt)
+            response = model.generate_content(prompt)
+            text = response.text
+            # print(text)
+            if disable_parse == True:
+                return text.strip()
+            if "{" in text and "}" in text:
+                start = text.find("{")
+                end = text.rfind("}") + 1
+                result = text[start:end]
+                return result.strip()
+            else:
+                raise ValueError("Model did not return a valid dictionary.")
+        except Exception as e:
+            print(e)
+            return f"Error calling Gemini model: {e}"
+
+    @staticmethod
+    def call_gemini_pro(prompt: str, api_key: str, disable_parse = None) -> str:
+        """Call Google's Gemini model via Generative AI API."""
+        gemini.configure(api_key=api_key)
+        try:
+            model = gemini.GenerativeModel("gemini-1.5-pro")
             response = model.generate_content(prompt)
             text = response.text
 
@@ -55,7 +78,7 @@ class LLMModelInterface:
                 raise ValueError("Model did not return a valid dictionary.")
         except Exception as e:
             print(e)
-            return f"Error calling Gemini model: {e}"
+            return f"Error calling Gemini pro model: {e}"
 
     @staticmethod
     def call_llama(prompt: str, api_key: str) -> str:
@@ -93,7 +116,7 @@ class LLMModelInterface:
             completion = client.chat.completions.create(
                 model="mistralai/Mixtral-8x7B-Instruct-v0.1", 
                 messages=messages, 
-                max_tokens=500
+                max_tokens=5000
             )
             return completion.choices[0].message.content.strip()
         except Exception as e:
@@ -183,7 +206,7 @@ class LLMModelInterface:
             outputs = model(**inputs)
 
         embeddings = outputs.last_hidden_state.mean(dim=1)
-        embedding_vector = embeddings.squeeze().numpy()
+        embedding_vector = embeddings.squeeze().numpy().tolist()
         
         return embedding_vector
 
