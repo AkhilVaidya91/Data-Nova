@@ -7,7 +7,7 @@ from modules.utils import cosine_similarity
 from modules.models import LLMModelInterface
 
 MONGO_URI = "mongodb+srv://akhilvaidya22:qN2dxc1cpwD64TeI@digital-nova.cbbsn.mongodb.net/?retryWrites=true&w=majority&appName=digital-nova"
-THRESHOLD_SCORE = 0.1
+THRESHOLD_SCORE = 0.3
 
 PROMPT = ''
 
@@ -16,12 +16,13 @@ db = client['digital_nova']
 corpus_collection = db['corpus']
 theme_collection = db['themes']
 analytics_collection = db['analytics']
+corpus_file_content = db["corpus_file_content"]
 
 def generate_prompt_template(SDG_DESC, FILE_TEXT):
     prompt = (
-        "You are an expert auditor tasked with critically analyzing the annual reports of various educational institutes to validate their alignment with the United Nations Sustainable Development Goals (UN SDGs). "
+        "You are an expert auditor tasked with critically analyzing the annual reports of various companies to validate their alignment with the United Nations Sustainable Development Goals (UN SDGs). "
         "I will provide you with excerpts from these reports, and your task is to evaluate whether the projects, initiatives, or actions mentioned in the excerpts align with any of the 17 UN SDGs.\n\n"
-        "Ensure that the alignment is strong enough for the initiatives to be considered valid and acceptable under the specified goals.\n\n"
+        "Ensure that the alignment is clear, direct and strong enough for the initiatives to be considered valid and acceptable under the specified goals.\n\n"
         "### UN SDGs Overview\n"
         "Each SDG has keywords and example projects that may be considered under its domain. The examples are indicative, not exhaustive.\n\n"
         f"{SDG_DESC}\n\n"
@@ -45,38 +46,17 @@ def generate_prompt_template(SDG_DESC, FILE_TEXT):
         "  }\n"
         "}\n\n"
         "- **Presence**: Indicate \"Yes\" if the initiative aligns with the respective SDG, otherwise \"No\".\n"
-        "- **Evidence**: Provide the exact matching text from the excerpt (in short about 15 words from the matching statement) if \"Yes\". If \"No\", leave this field as an empty string.\n\n"
+        "- **Evidence**: Provide the exact matching text **statement** from the excerpt (10–15 words) **only about a project, action, or initiative** if \"Yes\". Note that the statement should only be from the report's excerpt and not from the original description of the SDGs (don't confuse between the two).\n\n"
         "**Important Notes:**\n"
+        "- Note that when you are considering a particular initiative as an activity under a particular SDG, it should explicitly align with the given SDG and not just sound like one, this is a strict and hard constraint to be followed ensuring that a project is considered as an SDG aligned activity if and only if it perfectly aligns with the SDG. This is an important step to prevent LLM hallucination, don't fill in the gaps, respond only if the information is directly provided."
         "- Your response must always include all 17 SDGs, even if the presence is \"No\" for any or all.\n"
-        "- The response should be directly parsable as a Python dictionary.\n"
+        "- The response should be directly parsable as a JSON, with all elements (keys and values) enclosed in double quotes.\n"
         "- Do not include any text outside the JSON format, such as explanations or backticks, not even the word json.\n\n"
         "Please respond in the JSON structure specified."
     )
     return prompt
 
 def generate_synthesis_template(text_list):
-
-    ## this is the prompt:
-    # You are an expert researcher specializing in semantic clustering of concepts. You are provided with a large pairwise text corpus, where each pair contains a DOI or identifier as the key and a concept or theme as the value. Your task is to:
-
-    # 1. **Analyze** all themes in the provided text input.
-    # 2. **Identify** \( n \) major clusters of semantically similar themes.
-    # 3. **Assign** each theme to the most appropriate cluster.
-    # 4. **Return** the identifiers (DOIs or keys) associated with each cluster in a structured format.
-
-    # Your response should be in **JSON format only**, with no additional explanation or text. Do not even write the word json or backticks in your response. The structure should be as follows:
-
-
-    # {
-    # "Cluster 1 Description": ["ID or DOI 1", "ID or DOI 2", "ID or DOI 3", ... (string of the  exact input IDs)],
-    # "Cluster 2 Description": ["ID or DOI 1", "ID or DOI 2", "ID or DOI 3", ... (string of the  exact input IDs)],
-    # ...
-    # "Cluster n Description": ["ID or DOI 1", "ID or DOI 2", "ID or DOI 3", ... (string of the  exact input IDs)]
-    # }
-
-
-    # Each "Cluster Description" should summarize the theme of the cluster in a few words. The corresponding array should contain all identifiers that belong to that cluster.
-
     prompt = (
         "You are an expert researcher specializing in semantic clustering of concepts. You are provided with a large text corpus from a table, where each row contains a DOI or identifier as the key and a concept or theme as the value. Apart from these core titles, there will be a few additional properties such as number of citations etc. Your task is to:\n\n"
         "1. **Analyze** all themes in the provided text input.\n"
@@ -109,7 +89,7 @@ def analytics_page(username, model, api_key):
     st.subheader("Analytics")
     st.info("RAG Based LLM Analytics and Synthesis")
 
-    tab1, tab2 = st.tabs(["Analytics", "Synthesis"])
+    tab1, tab2, tab3 = st.tabs(["Analytics", "Synthesis", "Quantative Analytics"])
 
     with tab1:
 
@@ -127,7 +107,12 @@ def analytics_page(username, model, api_key):
             theme_data = theme_collection.find_one({"theme_name": theme_choice})
             corpus_data = corpus_collection.find_one({"corpus_name": corpus_choice})
 
-            files = corpus_data["files"]    ## list of dictionaries
+            files_ids = corpus_data["files"]    ## list of dictionaries
+            files = []
+            for file_id in files_ids:
+                file_doc = corpus_file_content.find_one({"_id": file_id})
+                if file_doc:
+                    files.append(file_doc)
             ref_vectors = theme_data["reference_vectors"] ## list of dictionaries
             result_list = []
             for file in files:
@@ -139,10 +124,12 @@ def analytics_page(username, model, api_key):
 
                 similar_texts = []  ## list of lists of strings
                 ref_text_string = ""    ## UN SDG description text
+                match_counts = {}
                 
-                for ref_vector in ref_vectors:
-                    ref_text = ref_vector["text"]
-                    ref_vector = ref_vector["vector"]
+                for i, ref_vector_dict in enumerate(ref_vectors, 1):
+                    ref_text = ref_vector_dict["text"]
+                    ref_vector = ref_vector_dict["vector"]
+                    match_count = 0
 
                     ## calculating cosine similarity
                     similarities = []
@@ -155,11 +142,14 @@ def analytics_page(username, model, api_key):
 
                     ## sorting the similarities
                     similarities = sorted(similarities, key=lambda x: x[1], reverse=True)
-                    top_3_texts = [text for text, similarity in similarities[:3]]
+                    top_3_texts = [text for text, similarity in similarities[:10]]
+                    matched_texts = [text for text, similarity in similarities if similarity >= THRESHOLD_SCORE]
+                    match_counts[f"Ref_Vector_{i}_Matches"] = len(matched_texts)
 
                     ## drop elements if the score is less than THRESHOLD_SCORE
 
-                    top_k_texts = [text for text in top_3_texts if similarity >= THRESHOLD_SCORE]
+                    top_k_texts = [text for text in top_3_texts if similarity >= 0.2]
+                    # top_k_texts = [text for text in top_3_texts if True]
 
                     similar_texts.extend(top_k_texts)
 
@@ -209,6 +199,7 @@ def analytics_page(username, model, api_key):
                         print(f"Skipping file {file_name} due to JSON parse error: {e}")
                         ## adding a blank dictionary to the result_list
                         # result_list.append({})
+                flat_dict.update(match_counts)
                 result_list.append(flat_dict)
                 # else:
                 #     print(f"Skipping file {file_name} due to error.")
@@ -236,13 +227,6 @@ def analytics_page(username, model, api_key):
             })
 
             st.success("Analytics generated successfully!")
-
-            # st.download_button(
-            #     label="Download as Excel",
-            #     data=result_df.to_excel,
-            #     file_name=f"{theme_choice}_{corpus_choice}.xlsx",
-            #     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            # )
 
     with tab2:
 
@@ -356,3 +340,5 @@ def analytics_page(username, model, api_key):
                     )
                 else:
                     st.warning("No analytics data was generated.")
+    with tab3:
+        pass

@@ -387,57 +387,57 @@ def theme_page(username, model, api_key):
 
                                 st.json(structured_df_json)
                                 
-                                if st.button("Process and Save Theme"):
-                                    from modules.models import LLMModelInterface
+                                # if st.button("Process and Save Theme"):
+                                from modules.models import LLMModelInterface
 
-                                    llm_interface = LLMModelInterface()
+                                llm_interface = LLMModelInterface()
 
-                                    columns = df.columns
-                                    explanations = []
-                                    for i, row in df.iterrows():
-                                        explanation = f"UN SDG {i+1}:\n"
-                                        for col in columns:
-                                            explanation += f"{col}: {row[col]}\n"
-                                        explanations.append(explanation.strip())
+                                columns = df.columns
+                                explanations = []
+                                for i, row in df.iterrows():
+                                    explanation = f"UN SDG {i+1}:\n"
+                                    for col in columns:
+                                        explanation += f"{col}: {row[col]}\n"
+                                    explanations.append(explanation.strip())
 
-                                    combined_tuples = []
+                                combined_tuples = []
 
-                                    for explanation in explanations:
-                                        if model == "OpenAI":
-                                            embedding = llm_interface.embed_openai(explanation, api_key)
-                                            
-                                        elif model == "Gemini":
-                                            embedding = llm_interface.embed_gemini(explanation, api_key)
+                                for explanation in explanations:
+                                    if model == "OpenAI":
+                                        embedding = llm_interface.embed_openai(explanation, api_key)
                                         
-                                        elif model == "USE":
-                                            embedding = llm_interface.embed_use(explanation)
+                                    elif model == "Gemini":
+                                        embedding = llm_interface.embed_gemini(explanation, api_key)
+                                    
+                                    elif model == "USE":
+                                        embedding = llm_interface.embed_use(explanation)
 
-                                        elif model == "MiniLM - distilBERT":
-                                            embedding = llm_interface.embed_distilBERT(explanation)
+                                    elif model == "MiniLM - distilBERT":
+                                        embedding = llm_interface.embed_distilBERT(explanation)
 
-                                        # embedding = [1,2,3]
-                                        dict_ = {"text": explanation, "vector": embedding}
-                                        combined_tuples.append(dict_)
+                                    # embedding = [1,2,3]
+                                    dict_ = {"text": explanation, "vector": embedding}
+                                    combined_tuples.append(dict_)
 
-                                    theme = {
-                                        "username": username,
-                                        "theme_name": theme_name,
-                                        "structured_df": structured_df_json,
-                                        "reference_vectors": combined_tuples,
-                                        "model": model
-                                    }
+                                theme = {
+                                    "username": username,
+                                    "theme_name": theme_name,
+                                    "structured_df": structured_df_json,
+                                    "reference_vectors": combined_tuples,
+                                    "model": model
+                                }
 
-                                    # st.json(theme)
+                                # st.json(theme)
 
-                                    ## store in MongoDB
-                                    try:
-                                        themes_collection.insert_one(theme)
-                                        st.success("Theme processed and saved successfully.")
-
-                                    except Exception as e:
-                                        st.error(f"Error processing file: {e}")
-
+                                ## store in MongoDB
+                                try:
+                                    themes_collection.insert_one(theme)
                                     st.success("Theme processed and saved successfully.")
+
+                                except Exception as e:
+                                    st.error(f"Error processing file: {e}")
+
+                                st.success("Theme processed and saved successfully.")
 
                 except Exception as e:
                     st.error(f"Error processing file: {e}")

@@ -3,13 +3,19 @@ import google.generativeai as gemini
 from huggingface_hub import InferenceClient
 from pymongo import MongoClient
 import os
-import tensorflow as tf
-import tensorflow_hub as hub
-import torch
-from transformers import AutoTokenizer, DistilBertModel
+# import tensorflow as tf
+# import tensorflow_hub as hub
+# import torch
+# from transformers import AutoTokenizer, DistilBertModel
+from sentence_transformers import SentenceTransformer
 
-USE_MODULE_URL = "https://tfhub.dev/google/universal-sentence-encoder/4"
-USE_MODEL = hub.load(USE_MODULE_URL)
+# USE_MODULE_URL = "https://tfhub.dev/google/universal-sentence-encoder/4"
+# USE_MODEL = hub.load(USE_MODULE_URL)
+
+# distilbert_tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
+# distilbert_model = DistilBertModel.from_pretrained("distilbert-base-uncased")
+
+minilmm_model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
 
 class LLMModelInterface:
     def __init__(self):
@@ -27,12 +33,13 @@ class LLMModelInterface:
                 {"role": "developer", "content": "You are an instruction following AI model that behaves and strictly follows the instructions given to you in the prompt."},
                 {"role": "user", "content": prompt}
             ],
-                max_tokens=2000,
-                temperature=0.2
+                max_tokens=8000,
+                temperature=0.01
             )
             # print(response.choices[0].message.content.strip())
             return response.choices[0].message.content.strip()
         except Exception as e:
+            print(e)
             return f"Error calling OpenAI GPT-4o Mini: {e}"
 
     @staticmethod
@@ -93,10 +100,12 @@ class LLMModelInterface:
                 }
             ]
             completion = client.chat.completions.create(
-                model="meta-llama/Llama-3.2-3B-Instruct", 
+                model="meta-llama/Llama-3.3-70B-Instruct", 
                 messages=messages, 
-                max_tokens=500
+                max_tokens=5000,
+                temperature=0.01
             )
+            print(completion.choices[0].message.content.strip())
             return completion.choices[0].message.content.strip()
         except Exception as e:
             return f"Error calling Llama 3.2 3B: {e}"
@@ -116,10 +125,13 @@ class LLMModelInterface:
             completion = client.chat.completions.create(
                 model="mistralai/Mixtral-8x7B-Instruct-v0.1", 
                 messages=messages, 
-                max_tokens=5000
+                # max_tokens=8000,
+                temperature=0.01
             )
+            # print(completion)
             return completion.choices[0].message.content.strip()
         except Exception as e:
+            print(e)
             return f"Error calling Mistral 7B: {e}"
 
     @staticmethod
@@ -179,7 +191,8 @@ class LLMModelInterface:
         - List[float]: The embedding vector as a list of floats.
         """
         try:
-            embeddings = USE_MODEL([text])
+            # embeddings = USE_MODEL([text])
+            embeddings = []
             embedding = embeddings.numpy().tolist()
             embedding = embedding[0]
             return embedding
@@ -197,17 +210,20 @@ class LLMModelInterface:
         Returns:
             numpy.ndarray: Embedding vector (768 dimensions)
         """
-        tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
-        model = DistilBertModel.from_pretrained("distilbert-base-uncased")
-        
-        inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True, max_length=512)
-        
-        with torch.no_grad():
-            outputs = model(**inputs)
+        # tokenizer = distilbert_tokenizer
+        # model = distilbert_model
 
-        embeddings = outputs.last_hidden_state.mean(dim=1)
-        embedding_vector = embeddings.squeeze().numpy().tolist()
+        model = minilmm_model
         
+        # inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True, max_length=512)
+        
+        # with torch.no_grad():
+        #     outputs = model(**inputs)
+
+        # embeddings = outputs.last_hidden_state.mean(dim=1)
+        # embedding_vector = embeddings.squeeze().numpy().tolist()
+        embeddings = model.encode([text])
+        embedding_vector = embeddings[0].tolist()
         return embedding_vector
 
 

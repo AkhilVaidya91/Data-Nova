@@ -26,3 +26,4 @@ huggingface-hub
 tensorflow
 tensorflow-hub
 spacy
+sentence-transformers

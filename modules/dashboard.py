@@ -16,6 +16,7 @@ corpus_collection = db['corpus']
 themes_collection = db['themes']
 analytics_collection = db['analytics']
 synthesis_collection = db['synthesis']
+corpus_file_content = db["corpus_file_content"]
 fs = GridFS(db)
 
 def get_user_info(username):
@@ -157,8 +158,8 @@ def display_dashboard(username):
                     for file in corpus.get('files', []):
                         # print(1)
                         # print(file)
-                        filename = file.get('filename', 'Unknown')
-                        st.write(f"- {filename}")
+                        # filename = file.get('filename', 'Unknown')
+                        st.write(f"- {file}")
                     
                     # Display structured data if available
                     # if 'structured_data' in corpus:
