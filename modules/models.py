@@ -15,6 +15,22 @@ from sentence_transformers import SentenceTransformer
 # distilbert_tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
 # distilbert_model = DistilBertModel.from_pretrained("distilbert-base-uncased")
 
+def clean_think(text):
+    """
+    Removes text before the "</think>" marker and returns the remaining text.
+    If "</think>" is not found, returns an empty string.
+    
+    :param text: Input text string
+    :return: Processed text after "</think>"
+    """
+    marker = "</think>"
+    index = text.find(marker)
+    
+    if index == -1:
+        return ""
+    
+    return text[index + len(marker):].strip()
+
 minilmm_model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
 
 class LLMModelInterface:
@@ -133,6 +149,35 @@ class LLMModelInterface:
         except Exception as e:
             print(e)
             return f"Error calling Mistral 7B: {e}"
+        
+    @staticmethod
+    def call_deepseek(prompt: str, api_key: str) -> str:
+        """Call DeepSeek R1 model using Hugging Face Transformers."""
+        try:
+
+            client = InferenceClient(
+                provider="together",
+                api_key=api_key
+            )
+            messages = [
+                {
+                    "role": "user",
+                    "content": prompt + "Do not think too much on the prompt, respond with a relatively lower amount of thought tokens. Also, this is text scraped from a PDF so the sentences might seem a bit incoherent, so dont be too extreme stringent or harsh while deciding if an initiative falls under a particular SDG."
+                }
+            ]
+            completion = client.chat.completions.create(
+                model="deepseek-ai/DeepSeek-R1", 
+                messages=messages, 
+                max_tokens=50000,
+                temperature=0.1
+            )
+            # print(completion)
+            output = completion.choices[0].message.content.strip()
+            clean_output = clean_think(output)
+            return clean_output
+        except Exception as e:
+            print(e)
+            return f"Error calling DeepSeek: {e}"
 
     @staticmethod
     def embed_openai(text: str, api_key: str):

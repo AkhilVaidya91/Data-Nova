@@ -109,7 +109,7 @@ def main_app():
     st.title("🚀 Digital Nova")
     st.subheader("Your GenAI-based research companion")
     op_path = os.getenv('OP_PATH', 'output')
-    model_selections = ["OpenAI", "Gemini", "Llama", "Mistral"]
+    model_selections = ["OpenAI", "Gemini", "Llama", "Mistral", "DeepSeek R1"]
     embedding_model_selections = ["OpenAI", "Gemini", "USE", "MiniLM - distilBERT"]
     embedding_choice = st.sidebar.selectbox("Select Embedding Model", embedding_model_selections)
     model_choice = st.sidebar.selectbox("Select LLM", model_selections)

@@ -22,10 +22,44 @@ def generate_prompt_template(SDG_DESC, FILE_TEXT):
     prompt = (
         "You are an expert auditor tasked with critically analyzing the annual reports of various companies to validate their alignment with the United Nations Sustainable Development Goals (UN SDGs). "
         "I will provide you with excerpts from these reports, and your task is to evaluate whether the projects, initiatives, or actions mentioned in the excerpts align with any of the 17 UN SDGs.\n\n"
-        "Ensure that the alignment is clear, direct and strong enough for the initiatives to be considered valid and acceptable under the specified goals.\n\n"
+        # "Ensure that the alignment is clear, direct and strong enough for the initiatives to be considered valid and acceptable under the specified goals.\n\n"
+        "Ensure that the alignment is clear enough for the initiatives to be considered valid and acceptable under the specified goals.\n\n"        
         "### UN SDGs Overview\n"
         "Each SDG has keywords and example projects that may be considered under its domain. The examples are indicative, not exhaustive.\n\n"
-        f"{SDG_DESC}\n\n"
+        # f"{SDG_DESC}\n\n"
+        """SDG 1 - No Poverty – End poverty in all its forms everywhere by ensuring social protection, access to essential services, and economic opportunities for all.
+
+SDG 2 - Zero Hunger – Achieve food security, improve nutrition, and promote sustainable agriculture to eliminate hunger and malnutrition.
+
+SDG 3 - Good Health and Well-being – Ensure healthy lives and promote well-being for all at all ages through universal healthcare, disease prevention, and mental health support.
+
+SDG 4 - Quality Education – Provide inclusive and equitable quality education and lifelong learning opportunities for all.
+
+SDG 5 - Gender Equality – Achieve gender equality and empower all women and girls by eliminating discrimination and violence while ensuring equal opportunities.
+
+SDG 6 - Clean Water and Sanitation – Ensure availability and sustainable management of water and sanitation for all.
+
+SDG 7 - Affordable and Clean Energy – Ensure access to affordable, reliable, sustainable, and modern energy for all.
+
+SDG 8 - Decent Work and Economic Growth – Promote inclusive and sustainable economic growth, full and productive employment, and decent work for all.
+
+SDG 9 - Industry, Innovation, and Infrastructure – Build resilient infrastructure, promote sustainable industrialization, and foster innovation.
+
+SDG 10 - Reduced Inequalities – Reduce inequality within and among countries by addressing income disparity, social exclusion, and discrimination.
+
+SDG 11 - Sustainable Cities and Communities – Make cities and human settlements inclusive, safe, resilient, and sustainable.
+
+SDG 12 - Responsible Consumption and Production – Ensure sustainable consumption and production patterns by reducing waste and promoting resource efficiency.
+
+SDG 13 - Climate Action – Take urgent action to combat climate change and its impacts through mitigation and adaptation strategies.
+
+SDG 14 - Life Below Water – Conserve and sustainably use oceans, seas, and marine resources for sustainable development.
+
+SDG 15 - Life on Land – Protect, restore, and promote the sustainable use of terrestrial ecosystems, forests, and biodiversity.
+
+SDG 16 - Peace, Justice, and Strong Institutions – Promote peaceful and inclusive societies, provide access to justice for all, and build effective, accountable institutions.
+
+SDG 17 - Partnerships for the Goals – Strengthen global partnerships and cooperation to achieve sustainable development through resource mobilization and shared knowledge."""
         "### Excerpts from the reports:\n\n"
         f"{FILE_TEXT}\n\n"
         "### Response Format\n"
@@ -48,8 +82,8 @@ def generate_prompt_template(SDG_DESC, FILE_TEXT):
         "- **Presence**: Indicate \"Yes\" if the initiative aligns with the respective SDG, otherwise \"No\".\n"
         "- **Evidence**: Provide the exact matching text **statement** from the excerpt (10–15 words) **only about a project, action, or initiative** if \"Yes\". Note that the statement should only be from the report's excerpt and not from the original description of the SDGs (don't confuse between the two).\n\n"
         "**Important Notes:**\n"
-        "- Note that when you are considering a particular initiative as an activity under a particular SDG, it should explicitly align with the given SDG and not just sound like one, this is a strict and hard constraint to be followed ensuring that a project is considered as an SDG aligned activity if and only if it perfectly aligns with the SDG. This is an important step to prevent LLM hallucination, don't fill in the gaps, respond only if the information is directly provided."
-        "- Your response must always include all 17 SDGs, even if the presence is \"No\" for any or all.\n"
+        # "- Note that when you are considering a particular initiative as an activity under a particular SDG, it should explicitly align with the given SDG and not just sound like one, this is a strict and hard constraint to be followed ensuring that a project is considered as an SDG aligned activity if and only if it perfectly aligns with the SDG. This is an important step to prevent LLM hallucination, don't fill in the gaps, respond only if the information is directly provided."
+        "- Your response **must** always include all 17 SDGs, even if the presence is \"No\" for any or all.\n"
         "- The response should be directly parsable as a JSON, with all elements (keys and values) enclosed in double quotes.\n"
         "- Do not include any text outside the JSON format, such as explanations or backticks, not even the word json.\n\n"
         "Please respond in the JSON structure specified."
@@ -101,6 +135,25 @@ def analytics_page(username, model, api_key):
         theme_choice = st.selectbox("Select Theme", theme_names)
         corpus_choice = st.selectbox("Select Corpus", corpus_names)
 
+        ## role input - define the LLM's role
+        role = st.text_input("Define the LLM's role", "You are an auditor tasked with critically analyzing the annual reports of various companies to validate their alignment with the United Nations Sustainable Development Goals (UN SDGs).")
+
+        ## theme input - define the theme and describe the task
+        theme = st.text_input("Define the theme", "Following is the description of the UN SDGs, the theme that you have to analyze...")
+
+        additional_instructions = st.text_area("Additional Instructions", "Ensure that the alignment is clear enough for the initiatives to be considered valid and acceptable under the specified goals.")
+
+        ## JSON structure input - define the JSON structure for the response
+
+        json_structure = st.text_area("Define the JSON structure for the response", "{\n  \"SDG-1\": {\n    \"Presence\": \"Yes\" or \"No\",\n    \"Evidence\": \"string\"\n  },\n  \"SDG-2\": {\n    \"Presence\": \"Yes\" or \"No\",\n    \"Evidence\": \"string\"\n  },\n  ...\n  \"SDG-17\": {\n    \"Presence\": \"Yes\" or \"No\",\n    \"Evidence\": \"string\"\n  }\n}")
+
+        prompt_generated = role + "\n\n" + theme + "\n\n" + json_structure + "\n\n" + additional_instructions
+
+        st.text(prompt_generated)
+
+        ## dropdown for additional inference columns - top 5 inferences, finanicals, external agencies, readability index
+        inference_columns = st.multiselect("Select additional inference columns", ["Top 5 Inferences", "Financials", "External Agencies", "Readability Index"])
+
         ## fetching the theme and corpus data
         if theme_choice and st.button("Analyze"):
 
@@ -142,7 +195,7 @@ def analytics_page(username, model, api_key):
 
                     ## sorting the similarities
                     similarities = sorted(similarities, key=lambda x: x[1], reverse=True)
-                    top_3_texts = [text for text, similarity in similarities[:10]]
+                    top_3_texts = [text for text, similarity in similarities[:5]]
                     matched_texts = [text for text, similarity in similarities if similarity >= THRESHOLD_SCORE]
                     match_counts[f"Ref_Vector_{i}_Matches"] = len(matched_texts)
 
@@ -171,6 +224,9 @@ def analytics_page(username, model, api_key):
                     response = llm_interface.call_llama(prompt_template, api_key)
                 elif model == "Mistral":
                     response = llm_interface.call_mistral(prompt_template, api_key)
+                elif model == "DeepSeek R1":
+                    response = llm_interface.call_deepseek(prompt_template, api_key)
+                    print(response)
 
                 text = response.strip()
 
@@ -283,6 +339,10 @@ def analytics_page(username, model, api_key):
                         # print("Mistral")
                         response = llm_interface.call_mistral(prompt_template, api_key)
                         # print(response)
+
+                    elif model == "DeepSeek R1":
+                        response = llm_interface.call_deepseek(prompt_template, api_key)
+
                     else:
                         st.error("Unsupported model selected.")
                         break
