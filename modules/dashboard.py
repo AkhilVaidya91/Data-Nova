@@ -3,6 +3,7 @@ from pymongo import MongoClient
 from gridfs import GridFS
 import os
 import pandas as pd
+import json
 
 # MongoDB setup
 MONGO_URI = os.getenv('MONGO_URI')
@@ -183,7 +184,7 @@ def display_dashboard(username):
                 with st.expander(theme['theme_name']):
                     st.write("**Structured Data:**")
                     try:
-                        df = pd.DataFrame(theme['structured_df'])
+                        df = pd.DataFrame(json.loads(theme['structured_df']))
                         st.dataframe(df, use_container_width=True)
                     except Exception as e:
                         st.error(f"Error displaying theme data: {str(e)}")

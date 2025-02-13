@@ -5,11 +5,19 @@ import json
 from pymongo import MongoClient
 from modules.utils import cosine_similarity
 from modules.models import LLMModelInterface
+import re
+import time
 
 MONGO_URI = "mongodb+srv://akhilvaidya22:qN2dxc1cpwD64TeI@digital-nova.cbbsn.mongodb.net/?retryWrites=true&w=majority&appName=digital-nova"
 THRESHOLD_SCORE = 0.3
 
 PROMPT = ''
+
+INFERENCE_COLUMNS = {
+    'Top 5 Inferences': "What are the top 5 inferences that you can derive based on this document? What are the primary areas of focus, explain them in about 200 words in a single string. Dont unnecessarily use markdown.",
+    'Financials': "Whare are the quantative financial details that you can derive from this document? Give me the exact figures of budget or amount spent on differet projects. Respond in a single string in less than 200 words.",
+    'External Agencies': "What are the external agencies involved in a particular project. Give me the names of the external agencies, if present else do not give any names and return that there are no external agencies present here. Respond only based on the data that is provided to you.",
+}
 
 client = MongoClient(MONGO_URI)
 db = client['digital_nova']
@@ -17,6 +25,46 @@ corpus_collection = db['corpus']
 theme_collection = db['themes']
 analytics_collection = db['analytics']
 corpus_file_content = db["corpus_file_content"]
+
+
+def count_polysyllabic_words(text):
+    """Counts words with 3 or more syllables in a given text."""
+    vowels = "aeiouy"
+
+    def syllable_count(word):
+        word = word.lower()
+        syllables = 0
+        prev_char_was_vowel = False
+
+        for char in word:
+            if char in vowels:
+                if not prev_char_was_vowel:
+                    syllables += 1
+                prev_char_was_vowel = True
+            else:
+                prev_char_was_vowel = False
+
+        # Remove silent 'e' at the end
+        if word.endswith("e") and syllables > 1:
+            syllables -= 1
+
+        return max(syllables, 1)
+
+    words = re.findall(r'\b\w+\b', text)  # Extract words
+    polysyllabic_count = sum(1 for word in words if syllable_count(word) >= 3)
+    return polysyllabic_count
+
+def smog_index(sentences):
+    """Calculates the SMOG Index for a given list of sentences."""
+    # if len(sentences) < 30:
+    #     raise ValueError("SMOG Index requires at least 30 sentences.")
+    
+    text = " ".join(sentences)
+    num_sentences = len(sentences)
+    num_polysyllabic_words = count_polysyllabic_words(text)
+    
+    smog = 1.0430 * (num_polysyllabic_words * (30 / num_sentences)) ** 0.5 + 3.1291
+    return round(smog, 2)
 
 def generate_prompt_template(SDG_DESC, FILE_TEXT):
     prompt = (
@@ -129,8 +177,8 @@ def analytics_page(username, model, api_key):
 
     ## dropdowns for themes and corpus
 
-        theme_names = theme_collection.distinct("theme_name")
-        corpus_names = corpus_collection.distinct("corpus_name")
+        theme_names = theme_collection.distinct("theme_name", {"username": username})
+        corpus_names = corpus_collection.distinct("corpus_name", {"username": username})
 
         theme_choice = st.selectbox("Select Theme", theme_names)
         corpus_choice = st.selectbox("Select Corpus", corpus_names)
@@ -152,7 +200,7 @@ def analytics_page(username, model, api_key):
         st.text(prompt_generated)
 
         ## dropdown for additional inference columns - top 5 inferences, finanicals, external agencies, readability index
-        inference_columns = st.multiselect("Select additional inference columns", ["Top 5 Inferences", "Financials", "External Agencies", "Readability Index"])
+        inference_columns = st.multiselect("Select additional inference columns", ["Top 5 Inferences", "Financials", "External Agencies"])
 
         ## fetching the theme and corpus data
         if theme_choice and st.button("Analyze"):
@@ -170,11 +218,18 @@ def analytics_page(username, model, api_key):
             result_list = []
             for file in files:
                 # print(1)
+
+                ## sleep for 10 seconds
+                time.sleep(15)
                 file_name = file["filename"]
                 # print(file_name)
                 data = file["processed_data"] ## list of dictionaries with text and vector keys
+                list_of_all_sentences = [d["text"] for d in data]
+                # print(len(list_of_all_sentences))
                 data = [(d["text"], d["vector"]) for d in data]
-
+                totl_num_sentences = len(data)
+                
+                smog_index_value = smog_index(list_of_all_sentences)
                 similar_texts = []  ## list of lists of strings
                 ref_text_string = ""    ## UN SDG description text
                 match_counts = {}
@@ -198,7 +253,6 @@ def analytics_page(username, model, api_key):
                     top_3_texts = [text for text, similarity in similarities[:5]]
                     matched_texts = [text for text, similarity in similarities if similarity >= THRESHOLD_SCORE]
                     match_counts[f"Ref_Vector_{i}_Matches"] = len(matched_texts)
-
                     ## drop elements if the score is less than THRESHOLD_SCORE
 
                     top_k_texts = [text for text in top_3_texts if similarity >= 0.2]
@@ -210,7 +264,8 @@ def analytics_page(username, model, api_key):
 
                 context_reference = "\n\n\n".join(similar_texts) ## --> this is the texts extracted from the file
 
-                prompt_template = generate_prompt_template(ref_text_string, context_reference)
+                # prompt_template = generate_prompt_template(ref_text_string, context_reference)
+                prompt_template = prompt_generated + "These are the actaul sentences from the document that you have to analyze: \n\n" + context_reference
 
                 # st.text(prompt_template)
 
@@ -253,18 +308,48 @@ def analytics_page(username, model, api_key):
                         
                     except Exception as e:
                         print(f"Skipping file {file_name} due to JSON parse error: {e}")
-                        ## adding a blank dictionary to the result_list
-                        # result_list.append({})
+
+                for column in inference_columns:
+                    if column in INFERENCE_COLUMNS:
+                        prompt_template = INFERENCE_COLUMNS[column]
+
+                        ## generating new context reference
+                        similarities = []
+                        for text, vector in data:
+                            similarity = cosine_similarity(ref_vector, vector)
+                            similarities.append((text, similarity))
+
+                        ## sorting the similarities
+                        similarities = sorted(similarities, key=lambda x: x[1], reverse=True)
+
+                        top_3_texts = [text for text, similarity in similarities[:25]]
+
+                        context_reference = "\n".join(top_3_texts)
+
+                        prompt = prompt_template + "Here are the sentences from the extract:\n\n" + context_reference
+
+                        if model == "OpenAI":
+                            response = llm_interface.call_openai_gpt4_mini(prompt, api_key)
+                        elif model == "Gemini":
+                            response = llm_interface.call_gemini(prompt, api_key, disable_parse=True)
+                        elif model == "Llama":
+                            response = llm_interface.call_llama(prompt, api_key)
+                        elif model == "Mistral":
+                            response = llm_interface.call_mistral(prompt, api_key)
+                        elif model == "DeepSeek R1":
+                            response = llm_interface.call_deepseek(prompt, api_key)
+
+                        text = response.strip()
+
+                        match_counts[column] = text
+
+                match_counts["Total Sentences"] = totl_num_sentences
+                match_counts["SMOG Index"] = smog_index_value
                 flat_dict.update(match_counts)
                 result_list.append(flat_dict)
-                # else:
-                #     print(f"Skipping file {file_name} due to error.")
+
 
             result_df = pd.DataFrame(result_list)
-
-            ## replacing null values with "No" and empty string - No if Presence word is in the column title and empty string if Evidence word is in the column title
-
-            # result_df = replace_null_values(result_df)
 
             filenames = [file["filename"] for file in files]
             filename_df = pd.DataFrame(filenames, columns=["File Name"])
@@ -331,7 +416,7 @@ def analytics_page(username, model, api_key):
                         response = llm_interface.call_openai_gpt4_mini(prompt_template, api_key)
                     elif model == "Gemini":
                         # st.text(prompt_template)
-                        response = llm_interface.call_gemini(prompt_template, api_key)
+                        response = llm_interface.call_gemini(prompt_template, api_key, disable_parse = True)
                         # response = ''
                     elif model == "Llama":
                         response = llm_interface.call_llama(prompt_template, api_key)
