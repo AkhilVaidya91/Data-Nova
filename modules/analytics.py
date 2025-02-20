@@ -4,7 +4,7 @@ import os
 import json
 from pymongo import MongoClient
 from modules.utils import cosine_similarity
-from modules.models import LLMModelInterface
+from modules.models import LLMModelInterface, SentimentAnalyzer, analyze_sentences_narc
 import re
 import time
 
@@ -25,6 +25,8 @@ corpus_collection = db['corpus']
 theme_collection = db['themes']
 analytics_collection = db['analytics']
 corpus_file_content = db["corpus_file_content"]
+
+sentiment_analyzer = SentimentAnalyzer()
 
 
 def count_polysyllabic_words(text):
@@ -343,8 +345,17 @@ def analytics_page(username, model, api_key):
 
                         match_counts[column] = text
 
+                sentiment_subjectivity = sentiment_analyzer.analyze(list_of_all_sentences)
+                narcissism_score = analyze_sentences_narc(list_of_all_sentences)
+                sentiment_score = sentiment_subjectivity["average_sentiment"]
+                subjectivity_score = sentiment_subjectivity["average_subjectivity"]
+
+                match_counts["Average Sentiment"] = sentiment_score
+                match_counts["Average Subjectivity"] = subjectivity_score
+
                 match_counts["Total Sentences"] = totl_num_sentences
                 match_counts["SMOG Index"] = smog_index_value
+                match_counts["Narcissism Score"] = narcissism_score
                 flat_dict.update(match_counts)
                 result_list.append(flat_dict)
 

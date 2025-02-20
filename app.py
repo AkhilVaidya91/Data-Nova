@@ -132,7 +132,7 @@ def main_app():
 
     if not os.path.exists(op_path):
         os.makedirs(op_path)
-    tabs = ["📊 Data Scraping", "🎨 Theme Generation (reference master)", "📚 Corpus Handling", "📈 Analytics", "🗂️ Dashboard"]
+    tabs = ["📊 Data Scraping", "🎨 Theme Generation (Deductive Coding)", "📚 Corpus Handling", "📈 Analytics", "🗂️ Dashboard"]
     active_tab = st.sidebar.selectbox("Select Tab", tabs, index=tabs.index(st.session_state.get('active_tab', "📊 Data Scraping")))
     if active_tab == "📊 Data Scraping":
         st.session_state.active_tab = "📊 Data Scraping"
@@ -206,8 +206,8 @@ def main_app():
                 elif platform == "Google Reviews":
                     google_reviews_page.google_reviews_page_loader(gemini_api_key, apify_api_key, op_path, st.session_state.username)
     
-    elif active_tab == "🎨 Theme Generation (reference master)":
-        st.session_state.active_tab = "🎨 Theme Generation (reference master)"
+    elif active_tab == "🎨 Theme Generation (Deductive Coding)":
+        st.session_state.active_tab = "🎨 Theme Generation (Deductive Coding)"
         # master_theme.themes_main(st.session_state.username)
         theme_upload.theme_page(st.session_state.username, st.session_state.embedding_choice, st.session_state.api_key)
 

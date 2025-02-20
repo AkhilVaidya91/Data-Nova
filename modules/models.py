@@ -3,6 +3,12 @@ import google.generativeai as gemini
 from huggingface_hub import InferenceClient
 from pymongo import MongoClient
 import os
+import numpy as np
+from typing import List, Dict
+from scipy.spatial.distance import cosine
+import re
+from collections import Counter
+import spacy
 # import tensorflow as tf
 # import tensorflow_hub as hub
 # import torch
@@ -14,6 +20,8 @@ from sentence_transformers import SentenceTransformer
 
 # distilbert_tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
 # distilbert_model = DistilBertModel.from_pretrained("distilbert-base-uncased")
+
+NLP = spacy.load("en_core_web_sm")
 
 def clean_think(text):
     """
@@ -276,3 +284,165 @@ class LLMModelInterface:
 # interface = LLMModelInterface()
 # result = interface.call_openai_gpt4_mini(prompt="Hello, world!", api_key="your_openai_api_key")
 # print(result)
+
+class SentimentAnalyzer:
+    
+    def __init__(self):
+        self.model = SentenceTransformer('all-MiniLM-L6-v2')
+        
+        # Anchor sentences for sentiment
+        self.positive_anchors = [
+            "The tone of the sentence is positive.",
+            "The tone of the sentence is happy."
+        ]
+        self.negative_anchors = [
+            "The tone of the sentence is negative.",
+            "The tone of the sentence is sad."
+        ]
+        
+        # Anchor sentences for subjectivity
+        self.subjective_anchors = [
+            "The sentence expresses an opinion.",
+            "The sentence expresses a belief."
+        ]
+        self.objective_anchors = [
+            "The sentence is factual.",
+            "The sentence is objective."
+        ]
+        
+        # Pre-compute anchor embeddings
+        self.positive_embeddings = self.model.encode(self.positive_anchors)
+        self.negative_embeddings = self.model.encode(self.negative_anchors)
+        self.subjective_embeddings = self.model.encode(self.subjective_anchors)
+        self.objective_embeddings = self.model.encode(self.objective_anchors)
+    
+    def _compute_similarity_score(self, embedding, anchor_embeddings):
+        similarities = [1 - cosine(embedding, anchor) for anchor in anchor_embeddings]
+        return np.mean(similarities)
+    
+    def analyze(self, sentences: List[str]) -> Dict[str, float]:
+        # Get embeddings for input sentences
+        embeddings = self.model.encode(sentences)
+        
+        sentiment_scores = []
+        subjectivity_scores = []
+        
+        for embedding in embeddings:
+            # Calculate sentiment score (1 = positive, 0 = negative)
+            pos_sim = self._compute_similarity_score(embedding, self.positive_embeddings)
+            neg_sim = self._compute_similarity_score(embedding, self.negative_embeddings)
+            sentiment_score = pos_sim / (pos_sim + neg_sim)
+            
+            # Calculate subjectivity score (1 = subjective, 0 = objective)
+            subj_sim = self._compute_similarity_score(embedding, self.subjective_embeddings)
+            obj_sim = self._compute_similarity_score(embedding, self.objective_embeddings)
+            subjectivity_score = subj_sim / (subj_sim + obj_sim)
+            
+            sentiment_scores.append(sentiment_score)
+            subjectivity_scores.append(subjectivity_score)
+        
+        return {
+            "average_sentiment": float(np.mean(sentiment_scores)),
+            "average_subjectivity": float(np.mean(subjectivity_scores))
+        }
+    
+
+class NarcissismAnalyzer:
+    def __init__(self):
+        # Load SpaCy's English model
+        self.nlp = NLP
+        
+        # Narcissistic language indicators
+        self.narcissistic_indicators = {
+            'self_reference': [
+                'i', 'me', 'my', 'mine', 'myself',
+                'we', 'our', 'ours', 'ourselves'
+            ],
+            'grandioso_terms': [
+                'best', 'greatest',
+                'innovative', 'visionary',
+                'superior', 'unparalleled'
+            ],
+            'achievement_terms': [
+                'triumph',
+                'victory', 'win'
+            ],
+            'authority_terms': [
+                'power', 'influence', 'control',
+                'command'
+            ]
+        }
+    
+    def preprocess_text(self, text):
+        """Clean and prepare text for analysis"""
+        # Convert to lowercase
+        text = text.lower()
+        # Remove special characters and extra whitespace
+        text = re.sub(r'[^\w\s]', ' ', text)
+        text = ' '.join(text.split())
+        return text
+    
+    def analyze_text(self, text):
+        """Analyze text for narcissistic indicators and return a score"""
+        processed_text = self.preprocess_text(text)
+        doc = self.nlp(processed_text)
+        
+        # Initialize scores for different components
+        scores = {
+            'self_reference': 0.0,
+            'grandioso': 0.0,
+            'achievement': 0.0,
+            'authority': 0.0
+        }
+        
+        # Count total words (excluding stop words)
+        total_words = len([token for token in doc if not token.is_stop and token.is_alpha])
+        
+        # Word frequency analysis
+        words = Counter(token.text for token in doc if token.is_alpha)
+        
+        # Calculate component scores
+        for word, count in words.items():
+            if word in self.narcissistic_indicators['self_reference']:
+                scores['self_reference'] += count
+            if word in self.narcissistic_indicators['grandioso_terms']:
+                scores['grandioso'] += count
+            if word in self.narcissistic_indicators['achievement_terms']:
+                scores['achievement'] += count
+            if word in self.narcissistic_indicators['authority_terms']:
+                scores['authority'] += count
+        
+        # Normalize scores by total words
+        for key in scores:
+            scores[key] = min(scores[key] / total_words * 10, 1.0)
+        
+        # Calculate weighted final score
+        weights = {
+            'self_reference': 0.4,
+            'grandioso': 0.3,
+            'achievement': 0.15,
+            'authority': 0.15
+        }
+        
+        final_score = sum(scores[key] * weights[key] for key in scores)
+        return round(final_score, 3)
+
+def analyze_sentences_narc(sentences):
+    """
+    Analyze a list of sentences for narcissistic tendencies.
+    Returns a single float value between 0 and 1.
+    
+    Args:
+        sentences (list): List of strings, each string being a sentence
+        
+    Returns:
+        float: Narcissism score between 0 and 1
+    """
+    # Initialize analyzer
+    analyzer = NarcissismAnalyzer()
+    
+    # Combine sentences into single text
+    text = ' '.join(sentences)
+    
+    # Get score
+    return analyzer.analyze_text(text)
