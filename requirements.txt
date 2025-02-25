@@ -27,3 +27,4 @@ tensorflow
 tensorflow-hub
 spacy
 sentence-transformers
+pandasai
