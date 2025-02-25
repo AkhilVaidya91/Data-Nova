@@ -21,7 +21,7 @@ from sentence_transformers import SentenceTransformer
 # distilbert_tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
 # distilbert_model = DistilBertModel.from_pretrained("distilbert-base-uncased")
 
-NLP = spacy.load("en_core_web_sm")
+# NLP = spacy.load("en_core_web_sm")
 
 def clean_think(text):
     """
@@ -347,12 +347,15 @@ class SentimentAnalyzer:
         }
     
 
+# Remove references to SpaCy and instead use a simple regex + stopword approach:
+
 class NarcissismAnalyzer:
     def __init__(self):
-        # Load SpaCy's English model
-        self.nlp = NLP
-        
-        # Narcissistic language indicators
+        # Removed SpaCy usage; define a minimal set of stopwords
+        self.stopwords = {
+            "the","is","in","and","of","to","a","an","or","that","this",
+            "it","be","on","for","with","are","at","by","because","do","did"
+        }
         self.narcissistic_indicators = {
             'self_reference': [
                 'i', 'me', 'my', 'mine', 'myself',
@@ -372,37 +375,20 @@ class NarcissismAnalyzer:
                 'command'
             ]
         }
-    
-    def preprocess_text(self, text):
-        """Clean and prepare text for analysis"""
-        # Convert to lowercase
-        text = text.lower()
-        # Remove special characters and extra whitespace
-        text = re.sub(r'[^\w\s]', ' ', text)
-        text = ' '.join(text.split())
-        return text
-    
-    def analyze_text(self, text):
-        """Analyze text for narcissistic indicators and return a score"""
-        processed_text = self.preprocess_text(text)
-        doc = self.nlp(processed_text)
+
+    def preprocess_text(self, text: str) -> list:
+        text = re.sub(r"[^\w\s]", " ", text.lower())  # remove punctuation
+        tokens = text.split()
+        tokens = [token for token in tokens if token not in self.stopwords]  # remove stopwords
+        return tokens
+
+    def analyze_text(self, text: str) -> float:
+        tokens = self.preprocess_text(text)
+        scores = {"self_reference": 0.0, "grandioso": 0.0, "achievement": 0.0, "authority": 0.0}
+        total_words = len(tokens)
         
-        # Initialize scores for different components
-        scores = {
-            'self_reference': 0.0,
-            'grandioso': 0.0,
-            'achievement': 0.0,
-            'authority': 0.0
-        }
-        
-        # Count total words (excluding stop words)
-        total_words = len([token for token in doc if not token.is_stop and token.is_alpha])
-        
-        # Word frequency analysis
-        words = Counter(token.text for token in doc if token.is_alpha)
-        
-        # Calculate component scores
-        for word, count in words.items():
+        word_counts = Counter(tokens)
+        for word, count in word_counts.items():
             if word in self.narcissistic_indicators['self_reference']:
                 scores['self_reference'] += count
             if word in self.narcissistic_indicators['grandioso_terms']:
@@ -412,19 +398,21 @@ class NarcissismAnalyzer:
             if word in self.narcissistic_indicators['authority_terms']:
                 scores['authority'] += count
         
-        # Normalize scores by total words
+        # Normalize scores and cap at 1.0
         for key in scores:
-            scores[key] = min(scores[key] / total_words * 10, 1.0)
+            if total_words > 0:
+                scores[key] = min(scores[key] / total_words * 10, 1.0)
+            else:
+                scores[key] = 0.0
         
-        # Calculate weighted final score
+        # Weighted final score
         weights = {
             'self_reference': 0.4,
             'grandioso': 0.3,
             'achievement': 0.15,
             'authority': 0.15
         }
-        
-        final_score = sum(scores[key] * weights[key] for key in scores)
+        final_score = sum(scores[k] * weights[k] for k in scores)
         return round(final_score, 3)
 
 def analyze_sentences_narc(sentences):
