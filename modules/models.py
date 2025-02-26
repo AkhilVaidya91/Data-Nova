@@ -279,12 +279,6 @@ class LLMModelInterface:
         embedding_vector = embeddings[0].tolist()
         return embedding_vector
 
-
-# Example usage:
-# interface = LLMModelInterface()
-# result = interface.call_openai_gpt4_mini(prompt="Hello, world!", api_key="your_openai_api_key")
-# print(result)
-
 class SentimentAnalyzer:
     
     def __init__(self):
