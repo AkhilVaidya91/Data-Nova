@@ -1,6 +1,5 @@
 import streamlit as st
 import os
-# import sqlite3
 import hashlib
 from pymongo import MongoClient
 from modules import corpus_upload, dashboard, analytics, theme_upload
@@ -216,7 +215,8 @@ def data_collection_page():
 
 def corpus_pdf_upload_page():
     # st.title("📑 Corpus PDF Upload")
-    st.info("This feature is currently being implemented. Check back soon!")
+    # st.info("This feature is currently being implemented. Check back soon!")
+    corpus_upload.corpus_page(st.session_state.username, st.session_state.embedding_choice, st.session_state.api_key)
 
 def corpus_excel_page():
     # st.title("📊 Corpus Excel Upload")
@@ -253,18 +253,14 @@ def main_app():
     
     # Display appropriate content based on selected section
     if active_section == "Corpus Management":
-        corpus_tabs = ["Data Collection", "Corpus PDF Upload", "Corpus Excel", "TCM ADO Synthesis"]
+        corpus_tabs = ["Data Collection", "Corpus Management"]
         active_tab = st.radio("Select Option", corpus_tabs, horizontal=True, index=corpus_tabs.index(st.session_state.get('active_tab', "Data Collection")))
         st.session_state.active_tab = active_tab
         
         if active_tab == "Data Collection":
             data_collection_page()
-        elif active_tab == "Corpus PDF Upload":
+        elif active_tab == "Corpus Management":
             corpus_pdf_upload_page()
-        elif active_tab == "Corpus Excel":
-            corpus_excel_page()
-        elif active_tab == "TCM ADO Synthesis":
-            tcm_ado_synthesis_page()
             
     elif active_section == "Deductive Coding":
         theme_upload.theme_page(st.session_state.username, st.session_state.embedding_choice, st.session_state.api_key)

@@ -176,9 +176,9 @@ Analyze the provided research paper and return your response in this strict JSON
 
 def corpus_page(username, model, api_key):
     """Page to handle corpus upload and preprocessing."""
-    st.subheader("PDF Corpus Upload")
+    # st.subheader("PDF Corpus Upload")
 
-    tab1, tab2 = st.tabs(["Corpus Upload", "Structured LIterature Synthesis"])
+    tab1, tab2, tab3 = st.tabs(["Corpus PDF Upload", "Corpus Excel Upload", "Structured LIterature Synthesis"])
 
     with tab1:
 
@@ -276,9 +276,87 @@ def corpus_page(username, model, api_key):
                     st.success("Corpus processed and saved successfully.")
                 except Exception as e:
                     st.error(f"Error processing file: {e}")
+
+    # with tab2:
+    with tab2:
+        st.info("Upload an Excel file with 'Document Name' and 'Content' columns. Content should have sentences delimited by semicolons (;).")
+        
+        # Corpus name input for Excel method
+        excel_corpus_name = st.text_input("Enter Corpus Name for Excel Import")
+        
+        # Excel file uploader
+        uploaded_excel = st.file_uploader("Upload Excel File", type=["xlsx", "xls"], key="excel_uploader")
+        
+        if uploaded_excel and excel_corpus_name:
+            try:
+                # Read Excel file
+                df = pd.read_excel(uploaded_excel)
+                
+                # Check if required columns exist
+                required_columns = ["Document Name", "Content"]
+                if not all(col in df.columns for col in required_columns):
+                    st.error("Excel file must contain 'Document Name' and 'Content' columns.")
+                else:
+                    # Display preview of the data
+                    st.write("Excel Data Preview:")
+                    st.dataframe(df.head())
+                    
+                    # Process Excel data
+                    if st.button("Process Excel and Save Corpus"):
+                        file_ids = []
+                        total_files = len(df)
+                        progress_bar = st.progress(0)
+                        processed_count = 0
+                        
+                        for idx, row in df.iterrows():
+                            document_name = row["Document Name"]
+                            content = row["Content"]
+                            
+                            # Split content by semicolons to get sentences
+                            sentences = [sentence.strip() for sentence in content.split(";") if sentence.strip()]
+                            
+                            processed_data = []
+                            for sentence in sentences:
+                                if model == "OpenAI":
+                                    vector = llm_interface.embed_openai(sentence, api_key)
+                                elif model == "Gemini":
+                                    vector = llm_interface.embed_gemini(sentence, api_key)
+                                elif model == "USE":
+                                    vector = llm_interface.embed_use(sentence)
+                                elif model == "MiniLM - distilBERT":
+                                    vector = llm_interface.embed_distilBERT(sentence)
+                                
+                                processed_data.append({"text": sentence, "vector": vector})
+                            
+                            file_content = {
+                                "filename": document_name,
+                                "processed_data": processed_data,
+                                "model": model
+                            }
+                            
+                            inserted_doc = corpus_file_content.insert_one(file_content)
+                            file_ids.append(inserted_doc.inserted_id)
+                            
+                            processed_count += 1
+                            progress_bar.progress(int(processed_count / total_files * 100))
+                        
+                        # Save corpus metadata
+                        corpus_doc = {
+                            "username": username,
+                            "corpus_name": excel_corpus_name,
+                            "files": file_ids
+                        }
+                        
+                        try:
+                            corpus_collection.insert_one(corpus_doc)
+                            st.success("Excel corpus processed and saved successfully.")
+                        except Exception as e:
+                            st.error(f"Error saving corpus: {e}")
+            except Exception as e:
+                st.error(f"Error processing Excel file: {e}")
                     
     
-    with tab2:
+    with tab3:
         st.info("Upload a set of research paper PDFs for TCCM-ADO Synthesis.")
 
         sysnthsis_name = st.text_input("Enter Synthesis Name")

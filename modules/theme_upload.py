@@ -123,7 +123,7 @@ def theme_page(username, model, api_key):
     if "current_theme" not in st.session_state:
         st.session_state.current_theme = ""
 
-    tab1, tab2 = st.tabs(["Theme Generation", "Doc Theme Generation"])
+    tab1, tab2, tab3 = st.tabs(["Theme Generation", "Doc Theme Generation", "Excel Theme Generation"])
 
     user = db['users']
     current_user = user.find_one({'username': username})
@@ -317,7 +317,7 @@ def theme_page(username, model, api_key):
             st.warning("Please set your Perplexity API key in your profile settings.")
 
     with tab2:
-        st.subheader("Document Theme Generation")
+        # st.subheader("Document Theme Generation")
         st.info("""
         **Document Theme Generation Guidelines**
 
@@ -441,6 +441,97 @@ def theme_page(username, model, api_key):
 
                 except Exception as e:
                     st.error(f"Error processing file: {e}")
+    with tab3:
+        st.info("""
+        **Excel Theme Generation Guidelines**
+
+        - **File Format**: Please upload your Excel files (.xlsx, .xls) with structured data.
+        - **Example Sentences**: Please ensure that the example sentences are semicolon (;) separated.
+        - **Structure**: Ensure your Excel has clear column headers that represent the themes/subthemes.
+        - **Data Quality**: Each row should represent a complete theme entry with all necessary information.
+        """)
+        
+        # Theme name input
+        theme_name = st.text_input("Enter a theme name:", key="theme_name_excel")
+
+        # Excel file uploader
+        uploaded_file = st.file_uploader(
+            "Upload an Excel file", 
+            type=["xlsx", "xls"],
+            accept_multiple_files=False,
+            key="excel_uploader"
+        )
+
+        if theme_name and uploaded_file:
+            try:
+                # Read the Excel file
+                df = pd.read_excel(uploaded_file)
+                
+                # Display the dataframe
+                st.write("**Excel Data Preview:**")
+                st.dataframe(df)
+                
+                # Let the user select the model for generating embeddings
+                model_user_ip_tab_3 = st.selectbox("Select a model for analysis", ["OpenAI", "Gemini", "USE", "MiniLM - distilBERT"], key="model_select_excel")
+                api_key_ip_tab_3 = st.text_input("Enter API Key", key="api_key_excel")
+                
+                if st.button("Process Excel and Generate Theme"):
+                    if api_key_ip_tab_3 or model_user_ip_tab_3 in ["USE", "MiniLM - distilBERT"]:
+                        # Convert DataFrame to JSON
+                        structured_df_json = df.to_dict(orient="records")
+                        
+                        from modules.models import LLMModelInterface
+                        llm_interface = LLMModelInterface()
+                        
+                        columns = df.columns
+                        explanations = []
+                        
+                        # Generate explanation text for each row
+                        for i, row in df.iterrows():
+                            explanation = f"Entry {i+1}:\n"
+                            for col in columns:
+                                explanation += f"{col}: {row[col]}\n"
+                            explanations.append(explanation.strip())
+                        
+                        combined_tuples = []
+                        
+                        # Generate embeddings for each explanation
+                        with st.spinner('Generating embeddings for each row...'):
+                            for explanation in explanations:
+                                if model_user_ip_tab_3 == "OpenAI":
+                                    embedding = llm_interface.embed_openai(explanation, api_key_ip_tab_3)
+                                    
+                                elif model_user_ip_tab_3 == "Gemini":
+                                    embedding = llm_interface.embed_gemini(explanation, api_key_ip_tab_3)
+                                
+                                elif model_user_ip_tab_3 == "USE":
+                                    embedding = llm_interface.embed_use(explanation)
+                                
+                                elif model_user_ip_tab_3 == "MiniLM - distilBERT":
+                                    embedding = llm_interface.embed_distilBERT(explanation)
+                                
+                                dict_ = {"text": explanation, "vector": embedding}
+                                combined_tuples.append(dict_)
+                        
+                        # Create theme document for MongoDB
+                        theme = {
+                            "username": username,
+                            "theme_name": theme_name,
+                            "structured_df": structured_df_json,
+                            "reference_vectors": combined_tuples,
+                            "model": model_user_ip_tab_3
+                        }
+                        
+                        # Store in MongoDB
+                        try:
+                            themes_collection.insert_one(theme)
+                            st.success(f"Excel theme '{theme_name}' processed and saved successfully!")
+                        except Exception as e:
+                            st.error(f"Error storing theme in database: {e}")
+                    else:
+                        st.warning("Please provide an API key for OpenAI or Gemini models, or select a local model (USE or MiniLM).")
+            except Exception as e:
+                st.error(f"Error processing Excel file: {e}")
 
 
     # # theme_name = st.text_input("Enter Theme Name")
