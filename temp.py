@@ -1,534 +1,113 @@
-import streamlit as st
-import json
 import os
-from pymongo import MongoClient
-from datetime import datetime
-from openai import OpenAI
-from modules.models import LLMModelInterface
-import pandas as pd
-import PyPDF2
+from dotenv import load_dotenv
+from llama_parse import LlamaParse
+from llama_index.core import SimpleDirectoryReader, Settings, VectorStoreIndex
+from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from llama_index.core.node_parser import SentenceSplitter
+from llama_index.core.ingestion import IngestionPipeline
+from llama_index.core.node_parser import TokenTextSplitter
+from typing import List
 
+# Load environment variables
+# load_dotenv()
 
-MONGO_URI = "mongodb+srv://akhilvaidya22:qN2dxc1cpwD64TeI@digital-nova.cbbsn.mongodb.net/?retryWrites=true&w=majority&appName=digital-nova"
-UPLOAD_DIR = "uploads"
-if not os.path.exists(UPLOAD_DIR):
-    os.makedirs(UPLOAD_DIR)
-client = MongoClient(MONGO_URI)
-db = client['digital_nova']
-themes_collection = db['themes']
+def parse_pdf_with_directory_reader(pdf_path: str, parsing_instruction: str = None) -> List:
+    """
+    Parse PDF using SimpleDirectoryReader and LlamaParse
+    
+    Args:
+        pdf_path (str): Path to the PDF file
+        parsing_instruction (str, optional): Custom parsing instructions
+    
+    Returns:
+        List: Parsed documents
+    """
+    print("Initializing LlamaParse for PDF parsing...")
+    parser = LlamaParse(
+        api_key="",
+        result_type="markdown",
+        parsing_instruction=parsing_instruction or "Extract text and maintain document structure"
+    )
+    
+    print(f"Parsing PDF file: {pdf_path}")
+    file_extractor = {".pdf": parser}
+    documents = SimpleDirectoryReader(
+        input_files=[pdf_path], 
+        file_extractor=file_extractor
+    ).load_data()
+    
+    print(f"Successfully parsed {len(documents)} documents from PDF.")
+    return documents
 
-def fetch_perplexity_data(api_key, topic):
-    headers = {
-        "accept": "application/json",
-        "content-type": "application/json",
-        "authorization": f"Bearer {api_key}"
-    }
-    messages = [
-        {
-            "role": "system",
-            "content": (
-                "You are a expert providing official information about the given topic. Provide only verified information with atleast 3 working reference links for citations."
+def create_vector_store_index(documents: List, model_name: str = "BAAI/bge-small-en-v1.5") -> VectorStoreIndex:
+    """
+    Create a vector store index using Hugging Face embeddings
+    
+    Args:
+        documents (List): List of documents to index
+        model_name (str): Hugging Face embedding model name
+    
+    Returns:
+        VectorStoreIndex: Indexed vector store
+    """
+    print("Initializing Hugging Face embedding model...")
+    Settings.embed_model = HuggingFaceEmbedding(model_name=model_name)
+    
+    print("Setting up ingestion pipeline...")
+    pipeline = IngestionPipeline(
+        transformations=[
+            # SentenceSplitter(chunk_size=50, chunk_overlap=5),
+            # TitleExtractor(),
+            TokenTextSplitter(
+                chunk_size=2048,  # 2048 tokens per chunk
+                chunk_overlap=200  # 200 tokens overlap between chunks
             ),
-        },
-        {
-            "role": "user",
-            "content": topic
-        },
-    ]
+            Settings.embed_model  # Use the Hugging Face embedding model
+        ]
+    )
     
-    try:
-        client = OpenAI(api_key=api_key, base_url="https://api.perplexity.ai")
-        response = client.chat.completions.create(
-            model="llama-3.1-sonar-small-128k-online",
-            messages=messages,
-        )
-        content = response.choices[0].message.content
-        return content
-    except Exception as e:
-        st.error(f"Failed to fetch data from Perplexity API: {e}")
-        return ""
+    print("Running ingestion pipeline...")
+    nodes = pipeline.run(documents=documents)
+    print(f"Successfully created {len(nodes)} vector nodes.")
     
-def read_pdf_content(file_path):
+    print("Creating vector store index...")
+    index = VectorStoreIndex(nodes)
+    print("Vector store index created successfully.")
+    
+    return index
+
+def query_vector_store(index: VectorStoreIndex, query: str, top_k: int = 5):
     """
-    Read and extract text content from a PDF file
+    Retrieve top k chunks from the vector store based on query
+    
+    Args:
+        index (VectorStoreIndex): Indexed vector store
+        query (str): User's query
+        top_k (int): Number of top chunks to retrieve
     """
-    try:
-        with open(file_path, 'rb') as file:
-            pdf_reader = PyPDF2.PdfReader(file)
-            full_text = ""
-            for page in pdf_reader.pages:
-                full_text += page.extract_text() + " "
-            return full_text.strip()
-    except Exception as e:
-        st.error(f"Failed to read PDF content: {e}")
-        return None
-
-def structure_data(api_key, generated_text, columns, model):
-    prompt = f"You are an AI that structures data into JSON format (list of python dictionaries) for converting unstructured text data into tables. Ensure that you have atlest as many rows in the output as much mentioned in the input text. Return the data in such a way that it is a list of dictionaried that can be converted to a pandas dataframe directly. You are given a large amount of data that can be structured into a table with many rows. Structure the following data into a list of JSON format with columns: {columns}. Data: {generated_text}. Ensure that you only output the data in JSON format without any other text at all, not even backtics `` and the word JSON. Do not include any other information in the output. Start your output string with an opening square brace [ and end with a closing square brace ] as it's last characcter of the srting (strictly follow this rule). Ensure that the list of JSON/python dictionaries can be directly parsed to a dataframe without any additional text."
-    interface = LLMModelInterface()
-    # print("Model: ", model)
-    if model == "Gemini":
-        print("Using Gemini")
-        structured_data = interface.call_gemini(prompt, api_key)
-        if structured_data[0] != '[':
-            structured_data = '[' + structured_data + ']'
-        try:
-            json_op = json.loads(structured_data)
-            return json_op
-        except Exception as e:
-            st.error(f"Failed to structure data using Gemini: {e}")
-            print(e)
-            return []
+    print(f"\nQuerying vector store with: '{query}' (Top {top_k} results)...")
+    retriever = index.as_retriever(similarity_top_k=top_k)
+    retrieved_nodes = retriever.retrieve(query)
     
-    messages = [
-        {
-            "role": "system",
-            "content": "You are an AI that structures data into JSON format for converting unstructured text data into tables. Ensure that you have atlest as many rows in the output as much mentioned in the input text. Return the data in such a way that it is a list of dictionaried that can be converted to a pandas dataframe directly."
-        },  
-        {
-            "role": "user",
-            "content": prompt
-        },
-    ]
+    print(f"\nTop {top_k} retrieved chunks:")
+    for i, node in enumerate(retrieved_nodes, 1):
+        print(f"\nChunk {i} (Score: {node.score}):")
+        print(node.text)
+
+def main():
+    pdf_path = r"c:\Users\Akhil PC\Downloads\acc_repo.pdf"
+    parsing_instruction = "Carefully extract all textual content, preserving formatting and structure"
     
-    try:
-        client = OpenAI(api_key=api_key)
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=messages,
-            temperature=0.1,
-        )
-        json_content = response.choices[0].message.content
-        return json.loads(json_content)
-    except Exception as e:
-        st.error(f"Failed to structure data using GPT-4o Mini: {e}")
-        return []
+    print("\nStarting PDF parsing process...")
+    documents = parse_pdf_with_directory_reader(pdf_path, parsing_instruction)
+    
+    print("\nCreating vector store index...")
+    index = create_vector_store_index(documents)
+    
+    query = "Extract the sections from this document report, that are related to the CSR or Corporate Social Responsibility or Sustainability."
+    query_vector_store(index, query)
+    
+    print("\nProcess completed successfully!")
 
-
-def theme_page(username, model, api_key):
-    """Page to handle theme upload and processing."""
-    st.subheader("Reference Master Theme Upload")
-    if "perplexity_text" not in st.session_state:
-        st.session_state.perplexity_text = ""
-    if "generated_text" not in st.session_state:
-        st.session_state.generated_text = ""
-    if "show_buttons" not in st.session_state:
-        st.session_state.show_buttons = False
-    if "dataframe" not in st.session_state:
-        st.session_state.dataframe = None
-    if "vector_store_created" not in st.session_state:
-        st.session_state.vector_store_created = False
-    if "theme_title" not in st.session_state:
-        st.session_state.theme_title = ""
-    if "current_theme" not in st.session_state:
-        st.session_state.current_theme = ""
-
-    tab1, tab2, tab3 = st.tabs(["Theme Generation", "Doc Theme Generation", "Excel Theme Generation"])
-
-    user = db['users']
-    current_user = user.find_one({'username': username})
-    if current_user:
-        api_keys = current_user.get('api_keys', {})
-        openai_key = api_keys.get('openai', "")
-        perplexity_key = api_keys.get('perplexity', "")
-        gemini_key = api_keys.get('gemini', "")
-    else:
-        api_keys = {}
-
-    with tab1:
-        if perplexity_key:
-            st.info("""
-            **Theme Generation Guidelines**
-
-            When generating a theme, please include the following elements in your prompt:
-
-            - **Theme**: The main subject or overarching idea.
-            - **Subthemes**: Related topics that fall under the main theme.
-            - **Description**: Brief explanations for each subtheme.
-            - **Keywords**: Important terms associated with each subtheme.
-            - **Examples**: Illustrations or scenarios for clarity.
-            """)
-            theme_name = st.text_input("Enter a theme name:")
-            st.session_state.current_theme = theme_name
-            topic = st.text_input("Enter a topic:")
-            
-            if st.button("Generate"):
-                if topic:
-
-                    st.session_state.generated_text = fetch_perplexity_data(perplexity_key, topic)
-                    if st.session_state.generated_text:
-                        st.markdown(st.session_state.generated_text)
-                        st.session_state.show_buttons = True
-
-                        # Store query and response in MongoDB
-                        chat_logs_collection = db['chat_logs']
-                        chat_log_doc = {
-                            'username': username,
-                            'theme': st.session_state.current_theme,
-                            'query': topic,
-                            'response': st.session_state.generated_text,
-                            'timestamp': datetime.now()
-                        }
-                        chat_logs_collection.insert_one(chat_log_doc)
-                else:
-                    st.warning("Please enter a topic to generate text.")
-
-            # Show Keep/Discard buttons only after generation
-            if st.session_state.show_buttons:
-                col1, col2 = st.columns(2)
-                with col1:
-                    if st.button("Keep"):
-                        st.session_state.perplexity_text = st.session_state.generated_text
-                        st.session_state.generated_text = ""  # Clear generated text
-                        st.session_state.show_buttons = False  # Hide buttons
-                        st.success("Text kept successfully!")
-                        st.rerun()
-                with col2:
-                    if st.button("Discard"):
-                        st.session_state.generated_text = ""  # Clear generated text
-                        st.session_state.show_buttons = False  # Hide buttons
-                        st.warning("Text discarded. Please enter a new topic.")
-                        st.rerun()
-
-            # Show the structuring options only if there's kept text
-            if st.session_state.perplexity_text:
-                st.subheader("Stored Text")
-                st.markdown(st.session_state.perplexity_text)
-                
-                # columns = st.text_input("Enter columns (comma-separated):")
-                possible_columns = [
-                    "Introduction", "Keywords", "Abstract", "Title", "Methodology", 
-                    "Results", "Conclusion", "Discussion", "Examples", "Policy", 
-                    "Objectives", "Committee", "Programs", "Goals", "Description",
-                    "Examples", "Reference Links"
-                ]
-
-                # Let the user select multiple columns
-                selected_columns = st.multiselect(
-                    "Select the column names for structuring the documents:",
-                    possible_columns
-                )
-
-                # Convert the selected columns into a comma-separated string
-                columns = ", ".join(selected_columns)
-                # st.info("Columns: Goal, Description, Keywords, Reference links, Examples")
-                model_user_ip = st.selectbox("Select a model for analysis", ["GPT-4o", "Gemini"])
-                api_key_ip = st.text_input("Enter API Key", key="api_key_pdf_1")
-
-                if st.button("Structure Data"):
-                    if columns:
-                        if model_user_ip == "Gemini":
-                            structured_data = structure_data(api_key_ip, st.session_state.perplexity_text, columns, model_user_ip)
-                        elif model_user_ip == "GPT-4o":
-                            structured_data = structure_data(api_key_ip, st.session_state.perplexity_text, columns, model_user_ip)
-                        if structured_data:
-                            st.session_state.dataframe = pd.DataFrame(structured_data)
-                            df = pd.DataFrame(structured_data)
-                            st.dataframe(st.session_state.dataframe)
-                            # theme_title = generate_theme_title(openai_key, st.session_state.perplexity_text)
-                            theme_title = st.session_state.current_theme
-                            st.session_state.theme_title = theme_title
-
-                            structured_df_json = df.to_json(orient="records")
-                            structured_df_json = structured_data
-                            # if st.button("Process and Save Theme"):
-                                # print("Processing and saving theme...")
-                            from modules.models import LLMModelInterface
-                                # print(1)
-                            llm_interface = LLMModelInterface()
-
-                            columns = df.columns
-                            # print(columns)
-                            explanations = []
-                            for i, row in df.iterrows():
-                                explanation = f"T {i+1}:\n"
-                                for col in columns:
-                                    explanation += f"{col}: {row[col]}\n"
-                                explanations.append(explanation.strip())
-
-                            combined_tuples = []
-
-                            for explanation in explanations:
-                                if model == "OpenAI":
-                                    embedding = llm_interface.embed_openai(explanation, api_key)
-                                    
-                                elif model == "Gemini":
-                                    embedding = llm_interface.embed_gemini(explanation, api_key)
-                                
-                                elif model == "USE":
-                                    embedding = llm_interface.embed_use(explanation)
-
-                                elif model == "MiniLM - distilBERT":
-                                    embedding = llm_interface.embed_distilBERT(explanation)
-
-                                # embedding = [1,2,3]
-                                dict_ = {"text": explanation, "vector": embedding}
-                                combined_tuples.append(dict_)
-
-                            theme = {
-                                "username": username,
-                                "theme_name": theme_name,
-                                "structured_df": structured_df_json,
-                                "reference_vectors": combined_tuples,
-                                "model": model
-                            }
-
-
-                            # st.json(theme)
-
-                            ## store in MongoDB
-                            try:
-                                themes_collection.insert_one(theme)
-                                st.success("Theme processed and saved successfully.")
-
-                            except Exception as e:
-                                st.error(f"Error processing file: {e}")
-
-                            st.success("Theme processed and saved successfully.")
-
-                    
-                        
-                        # theme_data = {
-                        #     'username': username,
-                        #     'theme_title': theme_title,
-                        #     'structured_data': structured_data,
-                        #     'created_at': datetime.now(),
-                        #     'updated_at': datetime.now()
-                        # }
-                        
-                        # themes_collection.insert_one(theme_data)
-                        # st.success(f"Structured table stored in MongoDB with theme title '{theme_title}' successfully!")
-                    else:
-                        st.warning("Please enter columns to structure data.")
-
-            # Add Chat History expander
-            if st.session_state.current_theme:
-                with st.expander("Chat History"):
-                    chat_logs_collection = db['chat_logs']
-                    chat_logs = chat_logs_collection.find({
-                        'username': username,
-                        'theme': st.session_state.current_theme
-                    }).sort('timestamp', -1)
-                    for chat in chat_logs:
-                        st.markdown(f"**You:** {chat['query']}")
-                        st.markdown(f"**Perplexity:** {chat['response']}")
-
-        else:
-            st.warning("Please set your Perplexity API key in your profile settings.")
-
-    with tab2:
-        # st.subheader("Document Theme Generation")
-        st.info("""
-        **Document Theme Generation Guidelines**
-
-        - **File Format**: Please upload your documents in **PDF format** for text parsing. If your documents are in Excel or other formats, kindly convert them to PDF before uploading.
-        - **Content Quality**: Ensure that your PDFs contain selectable text for accurate text extraction.
-        - **Naming Convention**: Use descriptive file names to help organize your corpus effectively.
-        """)
-        
-        # Theme name input
-        theme_name = st.text_input("Enter a theme name:", key="theme_name_pdf")
-
-        # PDF file uploader
-        uploaded_file = st.file_uploader(
-            "Upload a PDF file", 
-            type=["pdf"],
-            accept_multiple_files=False
-        )
-
-        if theme_name and uploaded_file:
-            if openai_key:
-                try:
-                    # Save the uploaded PDF to a temporary location
-                    temp_pdf_path = os.path.join(UPLOAD_DIR, uploaded_file.name)
-                    # if not os.path.exists("temp"):
-                    #     os.makedirs("temp")
-                    with open(temp_pdf_path, "wb") as f:
-                        f.write(uploaded_file.getbuffer())
-                    
-                    document_text = read_pdf_content(temp_pdf_path)
-
-                    if document_text:
-                        # Define the columns for structuring
-                        # columns = "Goals, Description, Keywords, Examples, Reference Links"
-                        possible_columns = [
-                            "Introduction", "Keywords", "Abstract", "Title", "Methodology", 
-                            "Results", "Conclusion", "Discussion", "Examples", "Policy", 
-                            "Objectives", "Committee", "Programs", "Goals", "Description",
-                            "Examples", "Reference Links"
-                        ]
-
-                        # Let the user select multiple columns
-                        selected_columns = st.multiselect(
-                            "Select the column names for structuring the documents:",
-                            possible_columns
-                        )
-
-                        # Convert the selected columns into a comma-separated string
-                        columns = ", ".join(selected_columns)
-                        model_user_ip_tab_2 = st.selectbox("Select a model for analysis", ["GPT-4o", "Gemini"])
-                        api_key_ip_tab_2 = st.text_input("Enter API Key", key="api_key_pdf")
-
-                        # Structure the content using OpenAI API
-                        if st.button("Structure this Document Content"):
-
-                            if model_user_ip_tab_2 == "Gemini":
-                                structured_data = structure_data(api_key_ip_tab_2, document_text, columns, model_user_ip_tab_2)
-                            else:
-                                structured_data = structure_data(api_key_ip_tab_2, document_text, columns, model_user_ip_tab_2)
-
-                            if structured_data:
-                                # Display the structured data
-                                st.write("**Structured Theme Data:**")
-
-                                df = pd.DataFrame(structured_data)
-                                st.dataframe(df)
-                                structured_df_json = df.to_json(orient="records")
-
-                                st.json(structured_df_json)
-                                
-                                # if st.button("Process and Save Theme"):
-                                from modules.models import LLMModelInterface
-
-                                llm_interface = LLMModelInterface()
-
-                                columns = df.columns
-                                explanations = []
-                                for i, row in df.iterrows():
-                                    explanation = f"UN SDG {i+1}:\n"
-                                    for col in columns:
-                                        explanation += f"{col}: {row[col]}\n"
-                                    explanations.append(explanation.strip())
-
-                                combined_tuples = []
-
-                                for explanation in explanations:
-                                    if model == "OpenAI":
-                                        embedding = llm_interface.embed_openai(explanation, api_key)
-                                        
-                                    elif model == "Gemini":
-                                        embedding = llm_interface.embed_gemini(explanation, api_key)
-                                    
-                                    elif model == "USE":
-                                        embedding = llm_interface.embed_use(explanation)
-
-                                    elif model == "MiniLM - distilBERT":
-                                        embedding = llm_interface.embed_distilBERT(explanation)
-
-                                    # embedding = [1,2,3]
-                                    dict_ = {"text": explanation, "vector": embedding}
-                                    combined_tuples.append(dict_)
-
-                                theme = {
-                                    "username": username,
-                                    "theme_name": theme_name,
-                                    "structured_df": structured_df_json,
-                                    "reference_vectors": combined_tuples,
-                                    "model": model
-                                }
-
-                                # st.json(theme)
-
-                                ## store in MongoDB
-                                try:
-                                    themes_collection.insert_one(theme)
-                                    st.success("Theme processed and saved successfully.")
-
-                                except Exception as e:
-                                    st.error(f"Error processing file: {e}")
-
-                                st.success("Theme processed and saved successfully.")
-
-                except Exception as e:
-                    st.error(f"Error processing file: {e}")
-    with tab3:
-        st.info("""
-        **Excel Theme Generation Guidelines**
-
-        - **File Format**: Please upload your Excel files (.xlsx, .xls) with structured data.
-        - **Example Sentences**: Please ensure that the example sentences are semicolon (;) separated.
-        - **Structure**: Ensure your Excel has clear column headers that represent the themes/subthemes.
-        - **Data Quality**: Each row should represent a complete theme entry with all necessary information.
-        """)
-        
-        # Theme name input
-        theme_name = st.text_input("Enter a theme name:", key="theme_name_excel")
-
-        # Excel file uploader
-        uploaded_file = st.file_uploader(
-            "Upload an Excel file", 
-            type=["xlsx", "xls"],
-            accept_multiple_files=False,
-            key="excel_uploader"
-        )
-
-        if theme_name and uploaded_file:
-            try:
-                # Read the Excel file
-                df = pd.read_excel(uploaded_file)
-                
-                # Display the dataframe
-                st.write("**Excel Data Preview:**")
-                st.dataframe(df)
-                
-                # Let the user select the model for generating embeddings
-                model_user_ip_tab_3 = st.selectbox("Select a model for analysis", ["OpenAI", "Gemini", "USE", "MiniLM - distilBERT"], key="model_select_excel")
-                api_key_ip_tab_3 = st.text_input("Enter API Key", key="api_key_excel")
-                
-                if st.button("Process Excel and Generate Theme"):
-                    if api_key_ip_tab_3 or model_user_ip_tab_3 in ["USE", "MiniLM - distilBERT"]:
-                        # Convert DataFrame to JSON
-                        structured_df_json = df.to_dict(orient="records")
-                        
-                        from modules.models import LLMModelInterface
-                        llm_interface = LLMModelInterface()
-                        
-                        columns = df.columns
-                        explanations = []
-                        
-                        # Generate explanation text for each row
-                        for i, row in df.iterrows():
-                            explanation = f"Entry {i+1}:\n"
-                            for col in columns:
-                                explanation += f"{col}: {row[col]}\n"
-                            explanations.append(explanation.strip())
-                        
-                        combined_tuples = []
-                        
-                        # Generate embeddings for each explanation
-                        with st.spinner('Generating embeddings for each row...'):
-                            for explanation in explanations:
-                                if model_user_ip_tab_3 == "OpenAI":
-                                    embedding = llm_interface.embed_openai(explanation, api_key_ip_tab_3)
-                                    
-                                elif model_user_ip_tab_3 == "Gemini":
-                                    embedding = llm_interface.embed_gemini(explanation, api_key_ip_tab_3)
-                                
-                                elif model_user_ip_tab_3 == "USE":
-                                    embedding = llm_interface.embed_use(explanation)
-                                
-                                elif model_user_ip_tab_3 == "MiniLM - distilBERT":
-                                    embedding = llm_interface.embed_distilBERT(explanation)
-                                
-                                dict_ = {"text": explanation, "vector": embedding}
-                                combined_tuples.append(dict_)
-                        
-                        # Create theme document for MongoDB
-                        theme = {
-                            "username": username,
-                            "theme_name": theme_name,
-                            "structured_df": structured_df_json,
-                            "reference_vectors": combined_tuples,
-                            "model": model_user_ip_tab_3
-                        }
-                        
-                        # Store in MongoDB
-                        try:
-                            themes_collection.insert_one(theme)
-                            st.success(f"Excel theme '{theme_name}' processed and saved successfully!")
-                        except Exception as e:
-                            st.error(f"Error storing theme in database: {e}")
-                    else:
-                        st.warning("Please provide an API key for OpenAI or Gemini models, or select a local model (USE or MiniLM).")
-            except Exception as e:
-                st.error(f"Error processing Excel file: {e}")
+if __name__ == "__main__":
+    main()

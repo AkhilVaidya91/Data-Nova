@@ -66,7 +66,7 @@ def welcome_screen():
 
 # Login/Signup sidebar
 def sidebar_login_signup():
-    st.sidebar.title("🚀 Digital Nova")
+    # st.sidebar.title("🚀 Digital Nova")
     menu = ["🔐 Login", "📝 SignUp"]
     choice = st.sidebar.selectbox("Menu", menu)
 
@@ -231,8 +231,8 @@ def main_app():
     st.subheader("Your GenAI-based research companion")
     
     # Model selection in sidebar (preserved from original)
-    model_selections = ["OpenAI", "Gemini", "Llama", "Mistral", "DeepSeek R1"]
-    embedding_model_selections = ["OpenAI", "Gemini", "USE", "MiniLM - distilBERT"]
+    model_selections = ["Gemini", "OpenAI", "Llama", "Mistral", "DeepSeek R1"]
+    embedding_model_selections = ["MiniLM - distilBERT", "Gemini", "USE", "OpenAI"]
     
     st.sidebar.header("Model Settings")
     embedding_choice = st.sidebar.selectbox("Select Embedding Model", embedding_model_selections)
