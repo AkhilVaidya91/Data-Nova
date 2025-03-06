@@ -1,12 +1,15 @@
 import os
+import streamlit as st
 from dotenv import load_dotenv
 from llama_parse import LlamaParse
 from llama_index.core import SimpleDirectoryReader, Settings, VectorStoreIndex
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-from llama_index.core.node_parser import SentenceSplitter
-from llama_index.core.ingestion import IngestionPipeline
 from llama_index.core.node_parser import TokenTextSplitter
+from llama_index.core.ingestion import IngestionPipeline
 from typing import List
+
+# Set page configuration
+st.set_page_config(page_title="PDF Processing Pipeline", layout="wide")
 
 # Load environment variables
 # load_dotenv()
@@ -22,24 +25,23 @@ def parse_pdf_with_directory_reader(pdf_path: str, parsing_instruction: str = No
     Returns:
         List: Parsed documents
     """
-    print("Initializing LlamaParse for PDF parsing...")
-    parser = LlamaParse(
-        api_key="",
-        result_type="markdown",
-        parsing_instruction=parsing_instruction or "Extract text and maintain document structure"
-    )
-    
-    print(f"Parsing PDF file: {pdf_path}")
-    file_extractor = {".pdf": parser}
-    documents = SimpleDirectoryReader(
-        input_files=[pdf_path], 
-        file_extractor=file_extractor
-    ).load_data()
-    
-    print(f"Successfully parsed {len(documents)} documents from PDF.")
-    return documents
+    with st.spinner(f"Parsing PDF: {os.path.basename(pdf_path)}..."):
+        parser = LlamaParse(
+            api_key=st.session_state.api_key,
+            result_type="markdown",
+            parsing_instruction=parsing_instruction or "Carefully extract all textual content, preserving formatting, preferably write everython in a single column document structure and ensure that all the individual sentences end with a period (full-stop)."
+        )
+        
+        file_extractor = {".pdf": parser}
+        documents = SimpleDirectoryReader(
+            input_files=[pdf_path], 
+            file_extractor=file_extractor
+        ).load_data()
+        
+        st.info(f"Successfully parsed {len(documents)} documents from {os.path.basename(pdf_path)}")
+        return documents
 
-def create_vector_store_index(documents: List, model_name: str = "BAAI/bge-small-en-v1.5") -> VectorStoreIndex:
+def create_vector_store_index(documents: List, model_name: str) -> VectorStoreIndex:
     """
     Create a vector store index using Hugging Face embeddings
     
@@ -50,33 +52,26 @@ def create_vector_store_index(documents: List, model_name: str = "BAAI/bge-small
     Returns:
         VectorStoreIndex: Indexed vector store
     """
-    print("Initializing Hugging Face embedding model...")
-    Settings.embed_model = HuggingFaceEmbedding(model_name=model_name)
-    
-    print("Setting up ingestion pipeline...")
-    pipeline = IngestionPipeline(
-        transformations=[
-            # SentenceSplitter(chunk_size=50, chunk_overlap=5),
-            # TitleExtractor(),
-            TokenTextSplitter(
-                chunk_size=2048,  # 2048 tokens per chunk
-                chunk_overlap=200  # 200 tokens overlap between chunks
-            ),
-            Settings.embed_model  # Use the Hugging Face embedding model
-        ]
-    )
-    
-    print("Running ingestion pipeline...")
-    nodes = pipeline.run(documents=documents)
-    print(f"Successfully created {len(nodes)} vector nodes.")
-    
-    print("Creating vector store index...")
-    index = VectorStoreIndex(nodes)
-    print("Vector store index created successfully.")
-    
-    return index
+    with st.spinner("Creating vector store index..."):
+        Settings.embed_model = HuggingFaceEmbedding(model_name=model_name)
+        
+        pipeline = IngestionPipeline(
+            transformations=[
+                TokenTextSplitter(
+                    chunk_size=st.session_state.chunk_size,
+                    chunk_overlap=st.session_state.chunk_overlap
+                ),
+                Settings.embed_model
+            ]
+        )
+        
+        nodes = pipeline.run(documents=documents)
+        st.info(f"Created {len(nodes)} vector nodes")
+        
+        index = VectorStoreIndex(nodes)
+        return index
 
-def query_vector_store(index: VectorStoreIndex, query: str, top_k: int = 5):
+def query_vector_store(index: VectorStoreIndex, query: str, top_k: int = 7):
     """
     Retrieve top k chunks from the vector store based on query
     
@@ -84,30 +79,193 @@ def query_vector_store(index: VectorStoreIndex, query: str, top_k: int = 5):
         index (VectorStoreIndex): Indexed vector store
         query (str): User's query
         top_k (int): Number of top chunks to retrieve
+        
+    Returns:
+        List: Retrieved nodes
     """
-    print(f"\nQuerying vector store with: '{query}' (Top {top_k} results)...")
-    retriever = index.as_retriever(similarity_top_k=top_k)
-    retrieved_nodes = retriever.retrieve(query)
+    with st.spinner(f"Querying vector store..."):
+        retriever = index.as_retriever(similarity_top_k=top_k)
+        retrieved_nodes = retriever.retrieve(query)
+        return retrieved_nodes
+
+def save_results_to_file(retrieved_nodes, output_path):
+    """
+    Save retrieved nodes to a text file
     
-    print(f"\nTop {top_k} retrieved chunks:")
-    for i, node in enumerate(retrieved_nodes, 1):
-        print(f"\nChunk {i} (Score: {node.score}):")
-        print(node.text)
+    Args:
+        retrieved_nodes: Retrieved nodes from vector store
+        output_path (str): Path to save the output file
+    """
+    with open(output_path, 'w', encoding='utf-8') as f:
+        f.write(f"Top {len(retrieved_nodes)} retrieved chunks:\n\n")
+        for i, node in enumerate(retrieved_nodes, 1):
+            f.write(f"Chunk {i} (Score: {node.score}):\n")
+            f.write(f"{node.text}\n\n")
+            f.write("-" * 80 + "\n\n")
+
+def process_pdf(pdf_path, output_dir, parsing_instruction, query, model_name, top_k):
+    """
+    Process a single PDF and save results
+    
+    Args:
+        pdf_path (str): Path to the PDF file
+        output_dir (str): Directory to save output
+        parsing_instruction (str): Custom parsing instructions
+        query (str): Query to search for
+        model_name (str): Embedding model name
+        top_k (int): Number of top chunks to retrieve
+        
+    Returns:
+        bool: Success status
+    """
+    try:
+        # Create output filename based on input PDF name
+        pdf_filename = os.path.basename(pdf_path)
+        output_filename = os.path.splitext(pdf_filename)[0] + ".txt"
+        output_path = os.path.join(output_dir, output_filename)
+        
+        # Parse PDF
+        documents = parse_pdf_with_directory_reader(pdf_path, parsing_instruction)
+        
+        # Create vector store index
+        index = create_vector_store_index(documents, model_name)
+        
+        # Query vector store
+        retrieved_nodes = query_vector_store(index, query, top_k)
+        
+        # Save results to file
+        save_results_to_file(retrieved_nodes, output_path)
+        
+        return True
+    except Exception as e:
+        st.error(f"Error processing {os.path.basename(pdf_path)}: {str(e)}")
+        return False
 
 def main():
-    pdf_path = r"c:\Users\Akhil PC\Downloads\acc_repo.pdf"
-    parsing_instruction = "Carefully extract all textual content, preserving formatting and structure"
+    st.title("PDF Processing Pipeline")
     
-    print("\nStarting PDF parsing process...")
-    documents = parse_pdf_with_directory_reader(pdf_path, parsing_instruction)
+    # Initialize session state for settings
+    if 'api_key' not in st.session_state:
+        st.session_state.api_key = ""
+    if 'chunk_size' not in st.session_state:
+        st.session_state.chunk_size = 2048
+    if 'chunk_overlap' not in st.session_state:
+        st.session_state.chunk_overlap = 200
     
-    print("\nCreating vector store index...")
-    index = create_vector_store_index(documents)
+    # Create sidebar for settings
+    with st.sidebar:
+        st.header("Settings")
+        
+        # LlamaParse API Key
+        st.session_state.api_key = st.text_input(
+            "LlamaParse API Key", 
+            value=st.session_state.api_key,
+            type="password"
+        )
+        
+        # Embedding model selection
+        model_name = st.selectbox(
+            "Embedding Model",
+            ["BAAI/bge-small-en-v1.5", "BAAI/bge-base-en-v1.5", "BAAI/bge-large-en-v1.5"],
+            index=0
+        )
+        
+        # Chunking parameters
+        st.session_state.chunk_size = st.number_input(
+            "Chunk Size (tokens)",
+            min_value=256,
+            max_value=4096,
+            value=st.session_state.chunk_size
+        )
+        
+        st.session_state.chunk_overlap = st.number_input(
+            "Chunk Overlap (tokens)",
+            min_value=0,
+            max_value=1000,
+            value=st.session_state.chunk_overlap
+        )
+        
+        # Top-k parameter
+        top_k = st.number_input(
+            "Top-K Results",
+            min_value=1,
+            max_value=20,
+            value=7
+        )
     
-    query = "Extract the sections from this document report, that are related to the CSR or Corporate Social Responsibility or Sustainability."
-    query_vector_store(index, query)
+    # Main area for file upload and processing
+    st.header("Upload PDFs")
+    uploaded_files = st.file_uploader("Choose PDF files", type="pdf", accept_multiple_files=True)
     
-    print("\nProcess completed successfully!")
+    # Parse instruction and query
+    parsing_instruction = st.text_area(
+        "PDF Parsing Instruction",
+        value="Carefully extract all textual content, preserving formatting, preferably write everython in a single column document structure and ensure that all the individual sentences (note sentences, not words or simple headings) end with a period (full-stop)."
+    )
+    
+    query = st.text_area(
+        "Query for Vector Search",
+        value="Extract the sections from this document report, that are related to the CSR or Corporate Social Responsibility or Sustainability."
+    )
+    
+    # Output directory
+    output_dir = st.text_input(
+        "Output Directory",
+        value="output"
+    )
+    
+    if st.button("Process PDFs"):
+        if not uploaded_files:
+            st.warning("Please upload at least one PDF file")
+            return
+        
+        # Create output directory if it doesn't exist
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+            st.info(f"Created output directory: {output_dir}")
+        
+        # Process each PDF
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        
+        successful_count = 0
+        for i, uploaded_file in enumerate(uploaded_files):
+            # Save uploaded file temporarily
+            temp_file_path = os.path.join("temp", uploaded_file.name)
+            os.makedirs("temp", exist_ok=True)
+            
+            with open(temp_file_path, "wb") as f:
+                f.write(uploaded_file.getbuffer())
+            
+            # Update status
+            status_text.text(f"Processing {i+1}/{len(uploaded_files)}: {uploaded_file.name}")
+            
+            # Process PDF
+            success = process_pdf(
+                temp_file_path,
+                output_dir,
+                parsing_instruction,
+                query,
+                model_name,
+                top_k
+            )
+            
+            if success:
+                successful_count += 1
+            
+            # Update progress
+            progress_bar.progress((i + 1) / len(uploaded_files))
+            
+            # Clean up temp file
+            os.remove(temp_file_path)
+        
+        # Final status update
+        st.success(f"Successfully processed {successful_count}/{len(uploaded_files)} PDF files")
+        st.info(f"Results saved to {output_dir} directory")
+        
+        # Clean up temp directory
+        if os.path.exists("temp"):
+            os.rmdir("temp")
 
 if __name__ == "__main__":
     main()
