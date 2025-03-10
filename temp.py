@@ -7,6 +7,9 @@ from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.core.node_parser import TokenTextSplitter
 from llama_index.core.ingestion import IngestionPipeline
 from typing import List
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
 
 # Set page configuration
 st.set_page_config(page_title="PDF Processing Pipeline", layout="wide")
@@ -14,28 +17,49 @@ st.set_page_config(page_title="PDF Processing Pipeline", layout="wide")
 # Load environment variables
 # load_dotenv()
 
+# def parse_pdf_with_directory_reader(pdf_path: str, parsing_instruction: str = None) -> List:
+#     """
+#     Parse PDF using SimpleDirectoryReader and LlamaParse
+    
+#     Args:
+#         pdf_path (str): Path to the PDF file
+#         parsing_instruction (str, optional): Custom parsing instructions
+    
+#     Returns:
+#         List: Parsed documents
+#     """
+#     with st.spinner(f"Parsing PDF: {os.path.basename(pdf_path)}..."):
+#         parser = LlamaParse(
+#             api_key=st.session_state.api_key,
+#             # result_type="markdown",
+#             fast_mode=True,
+#             parsing_instruction=parsing_instruction or "Carefully extract all textual content, preserving formatting, preferably write everython in a single column document structure and ensure that all the individual sentences end with a period (full-stop)."
+#         )
+        
+#         file_extractor = {".pdf": parser}
+#         documents = SimpleDirectoryReader(
+#             input_files=[pdf_path], 
+#             file_extractor=file_extractor
+#         ).load_data()
+        
+#         st.info(f"Successfully parsed {len(documents)} documents from {os.path.basename(pdf_path)}")
+#         return documents
+
 def parse_pdf_with_directory_reader(pdf_path: str, parsing_instruction: str = None) -> List:
     """
-    Parse PDF using SimpleDirectoryReader and LlamaParse
+    Parse PDF directly using SimpleDirectoryReader
     
     Args:
         pdf_path (str): Path to the PDF file
-        parsing_instruction (str, optional): Custom parsing instructions
+        parsing_instruction (str, optional): Custom parsing instructions (not used with direct reading)
     
     Returns:
         List: Parsed documents
     """
     with st.spinner(f"Parsing PDF: {os.path.basename(pdf_path)}..."):
-        parser = LlamaParse(
-            api_key=st.session_state.api_key,
-            result_type="markdown",
-            parsing_instruction=parsing_instruction or "Carefully extract all textual content, preserving formatting, preferably write everython in a single column document structure and ensure that all the individual sentences end with a period (full-stop)."
-        )
-        
-        file_extractor = {".pdf": parser}
+        # Use SimpleDirectoryReader with default PDF extractor instead of LlamaParse
         documents = SimpleDirectoryReader(
-            input_files=[pdf_path], 
-            file_extractor=file_extractor
+            input_files=[pdf_path]
         ).load_data()
         
         st.info(f"Successfully parsed {len(documents)} documents from {os.path.basename(pdf_path)}")
@@ -90,18 +114,44 @@ def query_vector_store(index: VectorStoreIndex, query: str, top_k: int = 7):
 
 def save_results_to_file(retrieved_nodes, output_path):
     """
-    Save retrieved nodes to a text file
+    Save retrieved nodes to a PDF file
     
     Args:
         retrieved_nodes: Retrieved nodes from vector store
         output_path (str): Path to save the output file
     """
-    with open(output_path, 'w', encoding='utf-8') as f:
-        f.write(f"Top {len(retrieved_nodes)} retrieved chunks:\n\n")
-        for i, node in enumerate(retrieved_nodes, 1):
-            f.write(f"Chunk {i} (Score: {node.score}):\n")
-            f.write(f"{node.text}\n\n")
-            f.write("-" * 80 + "\n\n")
+    # Change extension from .txt to .pdf
+    output_path = output_path.replace('.txt', '.pdf')
+    
+    # Create PDF document
+    doc = SimpleDocTemplate(output_path, pagesize=letter)
+    styles = getSampleStyleSheet()
+    story = []
+    
+    # Add title
+    title = Paragraph(f"Top {len(retrieved_nodes)} retrieved chunks:", styles['Title'])
+    story.append(title)
+    story.append(Spacer(1, 12))
+    
+    # Add each chunk with its score
+    for i, node in enumerate(retrieved_nodes, 1):
+        # Add chunk header
+        chunk_header = Paragraph(f"Chunk {i} (Score: {node.score}):", styles['Heading2'])
+        story.append(chunk_header)
+        story.append(Spacer(1, 6))
+        
+        # Add chunk text
+        chunk_text = Paragraph(node.text, styles['Normal'])
+        story.append(chunk_text)
+        story.append(Spacer(1, 12))
+        
+        # Add separator
+        separator = Paragraph("-" * 80, styles['Normal'])
+        story.append(separator)
+        story.append(Spacer(1, 12))
+    
+    # Build PDF
+    doc.build(story)
 
 def process_pdf(pdf_path, output_dir, parsing_instruction, query, model_name, top_k):
     """
@@ -121,25 +171,20 @@ def process_pdf(pdf_path, output_dir, parsing_instruction, query, model_name, to
     try:
         # Create output filename based on input PDF name
         pdf_filename = os.path.basename(pdf_path)
-        output_filename = os.path.splitext(pdf_filename)[0] + ".txt"
+        output_filename = os.path.splitext(pdf_filename)[0] + ".pdf"  # Changed to .pdf
         output_path = os.path.join(output_dir, output_filename)
         
-        # Parse PDF
+        # Rest of the function remains the same
         documents = parse_pdf_with_directory_reader(pdf_path, parsing_instruction)
-        
-        # Create vector store index
         index = create_vector_store_index(documents, model_name)
-        
-        # Query vector store
         retrieved_nodes = query_vector_store(index, query, top_k)
-        
-        # Save results to file
         save_results_to_file(retrieved_nodes, output_path)
         
         return True
     except Exception as e:
         st.error(f"Error processing {os.path.basename(pdf_path)}: {str(e)}")
         return False
+    
 
 def main():
     st.title("PDF Processing Pipeline")
