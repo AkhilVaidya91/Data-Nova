@@ -1,5 +1,5 @@
 streamlit == 1.39.0
-numpy
+numpy == 1.26.3
 pandas
 google-generativeai
 apify-client
@@ -28,3 +28,4 @@ tensorflow-hub
 spacy
 sentence-transformers
 pandasai
+nltk == 3.9.1
