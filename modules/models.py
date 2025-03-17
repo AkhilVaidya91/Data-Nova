@@ -279,12 +279,6 @@ class LLMModelInterface:
         embedding_vector = embeddings[0].tolist()
         return embedding_vector
 
-
-# Example usage:
-# interface = LLMModelInterface()
-# result = interface.call_openai_gpt4_mini(prompt="Hello, world!", api_key="your_openai_api_key")
-# print(result)
-
 class SentimentAnalyzer:
     
     def __init__(self):
@@ -321,6 +315,9 @@ class SentimentAnalyzer:
         return np.mean(similarities)
     
     def analyze(self, sentences: List[str]) -> Dict[str, float]:
+
+        if not sentences:
+            return {"average_sentiment": 0.0, "average_subjectivity": 0.0}
         # Get embeddings for input sentences
         embeddings = self.model.encode(sentences)
         
@@ -383,6 +380,8 @@ class NarcissismAnalyzer:
         return tokens
 
     def analyze_text(self, text: str) -> float:
+        if not text or not text.strip():
+            return 0.0
         tokens = self.preprocess_text(text)
         scores = {"self_reference": 0.0, "grandioso": 0.0, "achievement": 0.0, "authority": 0.0}
         total_words = len(tokens)

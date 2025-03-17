@@ -1,0 +1,6 @@
+pandasai==1.4.1
+streamlit
+matplotlib
+numpy==1.24.3  # Use a specific version
+pandas==1.5.3  # Make sure it's compatible with your numpy version
+pyyaml

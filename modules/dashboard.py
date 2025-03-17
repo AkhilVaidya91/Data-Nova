@@ -90,6 +90,34 @@ def display_api_key_section(username, user_info):
                     )
                     st.rerun()
 
+def display_theme_data(theme):
+    with st.expander(theme['theme_name']):
+        st.write("**Structured Data:**")
+        try:
+            # Properly parse the JSON string - handle different formats
+            if isinstance(theme['structured_df'], str):
+                try:
+                    # First try to load as JSON
+                    df_data = json.loads(theme['structured_df'])
+                except json.JSONDecodeError:
+                    # If that fails, try to eval as Python dict (carefully)
+                    import ast
+                    df_data = ast.literal_eval(theme['structured_df'])
+            else:
+                # If it's already a dict or list, use directly
+                df_data = theme['structured_df']
+                print(df_data)
+                
+            # Convert to DataFrame
+            df = pd.DataFrame(df_data)
+            # print(df)
+            st.dataframe(df, use_container_width=True)
+        except Exception as e:
+            st.error(f"Error displaying theme data: {str(e)}")
+            # Debug information
+            st.write("Data type:", type(theme['structured_df']))
+            st.write("First 100 characters:", str(theme['structured_df'])[:100])
+
 def display_dashboard(username):
     # Fetch user information
     user_info = get_user_info(username)
@@ -181,13 +209,14 @@ def display_dashboard(username):
         themes = get_user_themes(username)
         if themes:
             for theme in themes:
-                with st.expander(theme['theme_name']):
-                    st.write("**Structured Data:**")
-                    try:
-                        df = pd.DataFrame(json.loads(theme['structured_df']))
-                        st.dataframe(df, use_container_width=True)
-                    except Exception as e:
-                        st.error(f"Error displaying theme data: {str(e)}")
+                display_theme_data(theme)
+                # with st.expander(theme['theme_name']):
+                #     st.write("**Structured Data:**")
+                #     try:
+                #         df = pd.DataFrame(json.loads(str(theme['structured_df'])))
+                #         st.dataframe(df, use_container_width=True)
+                #     except Exception as e:
+                #         st.error(f"Error displaying theme data: {str(e)}")
         else:
             st.write("No themes found.")
 

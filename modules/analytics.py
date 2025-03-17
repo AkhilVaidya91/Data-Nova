@@ -9,7 +9,7 @@ import re
 import time
 
 MONGO_URI = "mongodb+srv://akhilvaidya22:qN2dxc1cpwD64TeI@digital-nova.cbbsn.mongodb.net/?retryWrites=true&w=majority&appName=digital-nova"
-THRESHOLD_SCORE = 0.3
+THRESHOLD_SCORE = 0.41
 
 PROMPT = ''
 
@@ -58,14 +58,20 @@ def count_polysyllabic_words(text):
 
 def smog_index(sentences):
     """Calculates the SMOG Index for a given list of sentences."""
-    # if len(sentences) < 30:
-    #     raise ValueError("SMOG Index requires at least 30 sentences.")
+    # Check if there are any sentences
+    if not sentences:
+        return 0
     
     text = " ".join(sentences)
-    num_sentences = len(sentences)
+    num_sentences = max(1, len(sentences))  # Ensure we don't divide by zero
     num_polysyllabic_words = count_polysyllabic_words(text)
     
-    smog = 1.0430 * (num_polysyllabic_words * (30 / num_sentences)) ** 0.5 + 3.1291
+    if num_sentences < 30:
+        # Adjust calculation for small texts
+        smog = 1.0430 * (num_polysyllabic_words * (30 / num_sentences)) ** 0.5 + 3.1291
+    else:
+        smog = 1.0430 * (num_polysyllabic_words * (30 / num_sentences)) ** 0.5 + 3.1291
+        
     return round(smog, 2)
 
 def generate_prompt_template(SDG_DESC, FILE_TEXT):
@@ -171,330 +177,337 @@ def replace_null_values(df):
 
 def analytics_page(username, model, api_key):
     st.subheader("Analytics")
-    st.info("RAG Based LLM Analytics and Synthesis")
+    st.info("RAG Based LLM Analytics")
 
-    tab1, tab2, tab3 = st.tabs(["Analytics", "Synthesis", "Quantative Analytics"])
+    theme_names = theme_collection.distinct("theme_name", {"username": username})
+    corpus_names = corpus_collection.distinct("corpus_name", {"username": username})
 
-    with tab1:
+    theme_choice = st.selectbox("Select Theme", theme_names)
+    corpus_choice = st.selectbox("Select Corpus", corpus_names)
 
-    ## dropdowns for themes and corpus
+    ## role input - define the LLM's role
+    role = st.text_input("Define the LLM's role", "You are an auditor tasked with critically analyzing the annual reports of various companies to validate their alignment with the United Nations Sustainable Development Goals (UN SDGs).")
 
-        theme_names = theme_collection.distinct("theme_name", {"username": username})
-        corpus_names = corpus_collection.distinct("corpus_name", {"username": username})
+    ## theme input - define the theme and describe the task
+    theme = st.text_input("Define the theme", "Following is the description of the UN SDGs, the theme that you have to analyze...")
 
-        theme_choice = st.selectbox("Select Theme", theme_names)
-        corpus_choice = st.selectbox("Select Corpus", corpus_names)
+    additional_instructions = st.text_area("Additional Instructions", "Ensure that the alignment is clear enough for the initiatives to be considered valid and acceptable under the specified goals.")
 
-        ## role input - define the LLM's role
-        role = st.text_input("Define the LLM's role", "You are an auditor tasked with critically analyzing the annual reports of various companies to validate their alignment with the United Nations Sustainable Development Goals (UN SDGs).")
+    ## JSON structure input - define the JSON structure for the response
 
-        ## theme input - define the theme and describe the task
-        theme = st.text_input("Define the theme", "Following is the description of the UN SDGs, the theme that you have to analyze...")
+    json_structure = st.text_area("Define the JSON structure for the response", "{\n  \"SDG-1\": {\n    \"Presence\": \"Yes\" or \"No\",\n    \"Evidence\": \"string\"\n  },\n  \"SDG-2\": {\n    \"Presence\": \"Yes\" or \"No\",\n    \"Evidence\": \"string\"\n  },\n  ...\n  \"SDG-17\": {\n    \"Presence\": \"Yes\" or \"No\",\n    \"Evidence\": \"string\"\n  }\n}")
 
-        additional_instructions = st.text_area("Additional Instructions", "Ensure that the alignment is clear enough for the initiatives to be considered valid and acceptable under the specified goals.")
+    prompt_generated = role + "\n\n" + theme + "\n\n" + json_structure + "\n\n" + additional_instructions
 
-        ## JSON structure input - define the JSON structure for the response
+    st.text(prompt_generated)
 
-        json_structure = st.text_area("Define the JSON structure for the response", "{\n  \"SDG-1\": {\n    \"Presence\": \"Yes\" or \"No\",\n    \"Evidence\": \"string\"\n  },\n  \"SDG-2\": {\n    \"Presence\": \"Yes\" or \"No\",\n    \"Evidence\": \"string\"\n  },\n  ...\n  \"SDG-17\": {\n    \"Presence\": \"Yes\" or \"No\",\n    \"Evidence\": \"string\"\n  }\n}")
+    ## dropdown for additional inference columns - top 5 inferences, finanicals, external agencies, readability index
+    inference_columns = st.multiselect("Select additional inference columns", ["Top 5 Inferences", "Financials", "External Agencies"])
 
-        prompt_generated = role + "\n\n" + theme + "\n\n" + json_structure + "\n\n" + additional_instructions
+    ## fetching the theme and corpus data
+    if theme_choice and st.button("Analyze"):
 
-        st.text(prompt_generated)
+        theme_data = theme_collection.find_one({"theme_name": theme_choice})
+        corpus_data = corpus_collection.find_one({"corpus_name": corpus_choice})
 
-        ## dropdown for additional inference columns - top 5 inferences, finanicals, external agencies, readability index
-        inference_columns = st.multiselect("Select additional inference columns", ["Top 5 Inferences", "Financials", "External Agencies"])
+        files_ids = corpus_data["files"]    ## list of dictionaries
+        files = []
+        for file_id in files_ids:
+            file_doc = corpus_file_content.find_one({"_id": file_id})
+            if file_doc:
+                files.append(file_doc)
+        ref_vectors = theme_data["reference_vectors"] ## list of dictionaries
+        result_list = []
+        for file in files:
+            # print(1)
 
-        ## fetching the theme and corpus data
-        if theme_choice and st.button("Analyze"):
+            ## sleep for 10 seconds
+            time.sleep(5)
+            file_name = file["filename"]
+            # print(file_name)
+            data = file["processed_data"] ## list of dictionaries with text and vector keys
+            list_of_all_sentences = [d["text"] for d in data]
+            # print(len(list_of_all_sentences))
+            data = [(d["text"], d["vector"]) for d in data]
+            totl_num_sentences = len(data)
+            
+            smog_index_value = smog_index(list_of_all_sentences)
+            similar_texts = []  ## list of lists of strings
+            ref_text_string = ""    ## UN SDG description text
+            match_counts = {}
+            
+            for i, ref_vector_dict in enumerate(ref_vectors, 1):
+                ref_text = ref_vector_dict["text"]
+                ref_vector = ref_vector_dict["vector"]
+                match_count = 0
 
-            theme_data = theme_collection.find_one({"theme_name": theme_choice})
-            corpus_data = corpus_collection.find_one({"corpus_name": corpus_choice})
+                ## calculating cosine similarity
+                similarities = []
+                for text, vector in data:
+                    if len(vector) != len(ref_vector):
+                        st.warning("Please ensure that the embedding dimensions are the same.")
+                        return
+                    similarity = cosine_similarity(ref_vector, vector)
+                    similarities.append((text, similarity))
 
-            files_ids = corpus_data["files"]    ## list of dictionaries
-            files = []
-            for file_id in files_ids:
-                file_doc = corpus_file_content.find_one({"_id": file_id})
-                if file_doc:
-                    files.append(file_doc)
-            ref_vectors = theme_data["reference_vectors"] ## list of dictionaries
-            result_list = []
-            for file in files:
-                # print(1)
+                ## sorting the similarities
+                similarities = sorted(similarities, key=lambda x: x[1], reverse=True)
+                top_3_texts = [(text, similarity) for text, similarity in similarities[:5]]
+                matched_texts = [(text, similarity) for text, similarity in similarities if similarity >= THRESHOLD_SCORE]
+                match_counts[f"Ref_Vector_{i}_Matches"] = len(matched_texts)
+                ## drop elements if the score is less than THRESHOLD_SCORE
+                # Add top 5 matching sentences with their similarity scores
+                top_5_with_scores = [(text, similarity) for text, similarity in similarities[:8]]
+                top_5_sentences = "; ".join([f"{text} (score: {similarity:.3f})" for text, similarity in top_5_with_scores])
+                match_counts[f"Ref_Vector_{i}_Top5"] = top_5_sentences
+                top_k_texts = [text for text, similarity in top_3_texts if similarity >= 0.15]
+                # print(top_k_texts)
+                # top_k_texts = [text for text in top_3_texts if True]
 
-                ## sleep for 10 seconds
-                time.sleep(15)
-                file_name = file["filename"]
-                # print(file_name)
-                data = file["processed_data"] ## list of dictionaries with text and vector keys
-                list_of_all_sentences = [d["text"] for d in data]
-                # print(len(list_of_all_sentences))
-                data = [(d["text"], d["vector"]) for d in data]
-                totl_num_sentences = len(data)
-                
-                smog_index_value = smog_index(list_of_all_sentences)
-                similar_texts = []  ## list of lists of strings
-                ref_text_string = ""    ## UN SDG description text
-                match_counts = {}
-                
-                for i, ref_vector_dict in enumerate(ref_vectors, 1):
-                    ref_text = ref_vector_dict["text"]
-                    ref_vector = ref_vector_dict["vector"]
-                    match_count = 0
+                similar_texts.extend(top_k_texts)
 
-                    ## calculating cosine similarity
+                ref_text_string += ref_text + "\n\n"
+
+            context_reference = "\n\n\n".join(similar_texts) ## --> this is the texts extracted from the file
+            if not context_reference.strip():
+                st.warning(f"No matching text found for file: {file_name}. Skipping...")
+                continue
+            # prompt_template = generate_prompt_template(ref_text_string, context_reference)
+            prompt_template = prompt_generated + "These are the actaul sentences from the document that you have to analyze: \n\n" + context_reference
+
+            # st.text(prompt_template)
+
+            llm_interface = LLMModelInterface()
+
+            if model == "OpenAI":
+                response = llm_interface.call_openai_gpt4_mini(prompt_template, api_key)
+            elif model == "Gemini":
+                response = llm_interface.call_gemini(prompt_template, api_key)
+                # response = ''
+            elif model == "Llama":
+                response = llm_interface.call_llama(prompt_template, api_key)
+            elif model == "Mistral":
+                response = llm_interface.call_mistral(prompt_template, api_key)
+            elif model == "DeepSeek R1":
+                response = llm_interface.call_deepseek(prompt_template, api_key)
+                print(response)
+
+            text = response.strip()
+
+            if "{" in text and "}" in text:
+                start = text.find("{")
+                end = text.rfind("}") + 1
+                result = text[start:end]
+                response = result.strip()
+            
+            if response:
+                flat_dict = {}
+                try:
+                    parsed_json = json.loads(response)
+                    if not parsed_json:
+                        print(f"Empty JSON response for file {file_name}")
+                        continue                    
+                    for theme_key, theme_value in parsed_json.items():
+                        if isinstance(theme_value, dict):
+                            for sub_key, sub_value in theme_value.items():
+                                new_key = f"{theme_key} {sub_key}"  # e.g., "SDG-1 Presence"
+                                flat_dict[new_key] = sub_value
+                        else:
+                            # If there's a top-level key that isn't a dict
+                            flat_dict[theme_key] = theme_value
+
+                    
+                except Exception as e:
+                    print(f"Skipping file {file_name} due to JSON parse error: {e}")
+
+            for column in inference_columns:
+                if column in INFERENCE_COLUMNS:
+                    prompt_template = INFERENCE_COLUMNS[column]
+
+                    ## generating new context reference
                     similarities = []
                     for text, vector in data:
-                        if len(vector) != len(ref_vector):
-                            st.warning("Please ensure that the embedding dimensions are the same.")
-                            return
                         similarity = cosine_similarity(ref_vector, vector)
                         similarities.append((text, similarity))
-
-                    ## sorting the similarities
+# Add check for empty similarities list
+                    if not similarities:
+                        match_counts[f"Ref_Vector_{i}_Matches"] = 0
+                        match_counts[f"Ref_Vector_{i}_Top5"] = ""
+                        continue
+                    ## sorting the similaritie
                     similarities = sorted(similarities, key=lambda x: x[1], reverse=True)
-                    top_3_texts = [text for text, similarity in similarities[:5]]
-                    matched_texts = [text for text, similarity in similarities if similarity >= THRESHOLD_SCORE]
-                    match_counts[f"Ref_Vector_{i}_Matches"] = len(matched_texts)
-                    ## drop elements if the score is less than THRESHOLD_SCORE
 
-                    top_k_texts = [text for text in top_3_texts if similarity >= 0.2]
-                    # top_k_texts = [text for text in top_3_texts if True]
+                    top_3_texts = [text for text, similarity in similarities[:25]]
 
-                    similar_texts.extend(top_k_texts)
+                    context_reference = "\n".join(top_3_texts)
 
-                    ref_text_string += ref_text + "\n\n"
+                    prompt = prompt_template + "Here are the sentences from the extract:\n\n" + context_reference
 
-                context_reference = "\n\n\n".join(similar_texts) ## --> this is the texts extracted from the file
-
-                # prompt_template = generate_prompt_template(ref_text_string, context_reference)
-                prompt_template = prompt_generated + "These are the actaul sentences from the document that you have to analyze: \n\n" + context_reference
-
-                # st.text(prompt_template)
-
-                llm_interface = LLMModelInterface()
-
-                if model == "OpenAI":
-                    response = llm_interface.call_openai_gpt4_mini(prompt_template, api_key)
-                elif model == "Gemini":
-                    response = llm_interface.call_gemini(prompt_template, api_key)
-                elif model == "Llama":
-                    response = llm_interface.call_llama(prompt_template, api_key)
-                elif model == "Mistral":
-                    response = llm_interface.call_mistral(prompt_template, api_key)
-                elif model == "DeepSeek R1":
-                    response = llm_interface.call_deepseek(prompt_template, api_key)
-                    print(response)
-
-                text = response.strip()
-
-                if "{" in text and "}" in text:
-                    start = text.find("{")
-                    end = text.rfind("}") + 1
-                    result = text[start:end]
-                    response = result.strip()
-                
-                if response:
-                    flat_dict = {}
-                    try:
-                        parsed_json = json.loads(response)
-                        
-                        for theme_key, theme_value in parsed_json.items():
-                            if isinstance(theme_value, dict):
-                                for sub_key, sub_value in theme_value.items():
-                                    new_key = f"{theme_key} {sub_key}"  # e.g., "SDG-1 Presence"
-                                    flat_dict[new_key] = sub_value
-                            else:
-                                # If there's a top-level key that isn't a dict
-                                flat_dict[theme_key] = theme_value
-
-                        
-                    except Exception as e:
-                        print(f"Skipping file {file_name} due to JSON parse error: {e}")
-
-                for column in inference_columns:
-                    if column in INFERENCE_COLUMNS:
-                        prompt_template = INFERENCE_COLUMNS[column]
-
-                        ## generating new context reference
-                        similarities = []
-                        for text, vector in data:
-                            similarity = cosine_similarity(ref_vector, vector)
-                            similarities.append((text, similarity))
-
-                        ## sorting the similarities
-                        similarities = sorted(similarities, key=lambda x: x[1], reverse=True)
-
-                        top_3_texts = [text for text, similarity in similarities[:25]]
-
-                        context_reference = "\n".join(top_3_texts)
-
-                        prompt = prompt_template + "Here are the sentences from the extract:\n\n" + context_reference
-
-                        if model == "OpenAI":
-                            response = llm_interface.call_openai_gpt4_mini(prompt, api_key)
-                        elif model == "Gemini":
-                            response = llm_interface.call_gemini(prompt, api_key, disable_parse=True)
-                        elif model == "Llama":
-                            response = llm_interface.call_llama(prompt, api_key)
-                        elif model == "Mistral":
-                            response = llm_interface.call_mistral(prompt, api_key)
-                        elif model == "DeepSeek R1":
-                            response = llm_interface.call_deepseek(prompt, api_key)
-
-                        text = response.strip()
-
-                        match_counts[column] = text
-
-                sentiment_subjectivity = sentiment_analyzer.analyze(list_of_all_sentences)
-                narcissism_score = analyze_sentences_narc(list_of_all_sentences)
-                sentiment_score = sentiment_subjectivity["average_sentiment"]
-                subjectivity_score = sentiment_subjectivity["average_subjectivity"]
-
-                match_counts["Average Sentiment"] = sentiment_score
-                match_counts["Average Subjectivity"] = subjectivity_score
-
-                match_counts["Total Sentences"] = totl_num_sentences
-                match_counts["SMOG Index"] = smog_index_value
-                match_counts["Narcissism Score"] = narcissism_score
-                flat_dict.update(match_counts)
-                result_list.append(flat_dict)
-
-
-            result_df = pd.DataFrame(result_list)
-
-            filenames = [file["filename"] for file in files]
-            filename_df = pd.DataFrame(filenames, columns=["File Name"])
-
-            result_df = pd.concat([filename_df, result_df], axis=1)
-
-            st.dataframe(result_df)
-
-            ## store the analytics dataframe on mongodb
-
-            analytics_collection.insert_one({
-                "username": username,
-                "theme": theme_choice,
-                "corpus": corpus_choice,
-                "result": result_df.to_dict(orient="records")
-            })
-
-            st.success("Analytics generated successfully!")
-
-    with tab2:
-
-        ## upload an Excel file with multiple columns
-
-        st.info("Upload an Excel file with TCM-ADO columns to generate a synthesis report. Ensure that your input excel has TCM-ADO columns.")
-
-        uploaded_file = st.file_uploader("Choose an Excel file", type=["xlsx"])
-
-        if uploaded_file:
-            df = pd.read_excel(uploaded_file)  ## reading the uploaded file
-            column_names = df.columns.tolist()
-
-            selected_columns = st.multiselect("Select columns for synthesis", column_names)
-
-            if st.button("Generate Synthesis"):
-                batch_size = 50  # Define the batch size
-                total_rows = len(df)
-                # print(total_rows)
-                result_list = []
-                # flat_dict = {}
-                keys = []
-                values = []
-                
-                # df = pd.DataFrame(columns=["Cluster Title", "DOIs"])
-                prompt_template = ""
-                for start in range(0, total_rows, batch_size):
-                    end = min(start + batch_size, total_rows)
-                    batch_df = df.iloc[start:end]
-                    
-                    text_list = []
-                    for _, row in batch_df.iterrows():
-                        text = ""
-                        for column in selected_columns:
-                            text += f"{column} : {str(row[column])} | "
-
-                        text_list.append(text.strip())
-                    
-                    combined_text = "\n\n".join(text_list)
-                    prompt_template = generate_synthesis_template(combined_text)
-                    st.text(f"Processing batch {start // batch_size + 1}: Prompt length {len(prompt_template)}")
-
-                    # st.text(prompt_template)
-                    llm_interface = LLMModelInterface()
                     if model == "OpenAI":
-                        response = llm_interface.call_openai_gpt4_mini(prompt_template, api_key)
+                        response = llm_interface.call_openai_gpt4_mini(prompt, api_key)
                     elif model == "Gemini":
-                        # st.text(prompt_template)
-                        response = llm_interface.call_gemini(prompt_template, api_key, disable_parse = True)
-                        # response = ''
+                        response = llm_interface.call_gemini(prompt, api_key, disable_parse=True)
                     elif model == "Llama":
-                        response = llm_interface.call_llama(prompt_template, api_key)
+                        response = llm_interface.call_llama(prompt, api_key)
                     elif model == "Mistral":
-                        # print("Mistral")
-                        response = llm_interface.call_mistral(prompt_template, api_key)
-                        # print(response)
-
+                        response = llm_interface.call_mistral(prompt, api_key)
                     elif model == "DeepSeek R1":
-                        response = llm_interface.call_deepseek(prompt_template, api_key)
+                        response = llm_interface.call_deepseek(prompt, api_key)
 
-                    else:
-                        st.error("Unsupported model selected.")
-                        break
-                    
                     text = response.strip()
+
+                    match_counts[column] = text
+
+            sentiment_subjectivity = sentiment_analyzer.analyze(list_of_all_sentences)
+            narcissism_score = analyze_sentences_narc(list_of_all_sentences)
+            sentiment_score = sentiment_subjectivity["average_sentiment"]
+            subjectivity_score = sentiment_subjectivity["average_subjectivity"]
+
+            match_counts["Average Sentiment"] = sentiment_score
+            match_counts["Average Subjectivity"] = subjectivity_score
+
+            match_counts["Total Sentences"] = totl_num_sentences
+            match_counts["SMOG Index"] = smog_index_value
+            match_counts["Narcissism Score"] = narcissism_score
+            flat_dict.update(match_counts)
+            result_list.append(flat_dict)
+
+
+        result_df = pd.DataFrame(result_list)
+
+        filenames = [file["filename"] for file in files]
+        filename_df = pd.DataFrame(filenames, columns=["File Name"])
+
+        result_df = pd.concat([filename_df, result_df], axis=1)
+
+        st.dataframe(result_df)
+
+        ## store the analytics dataframe on mongodb
+
+        analytics_collection.insert_one({
+            "username": username,
+            "theme": theme_choice,
+            "corpus": corpus_choice,
+            "result": result_df.to_dict(orient="records")
+        })
+
+        st.success("Analytics generated successfully!")
+
+    # with tab2:
+
+    #     ## upload an Excel file with multiple columns
+
+    #     st.info("Upload an Excel file with TCM-ADO columns to generate a synthesis report. Ensure that your input excel has TCM-ADO columns.")
+
+    #     uploaded_file = st.file_uploader("Choose an Excel file", type=["xlsx"])
+
+    #     if uploaded_file:
+    #         df = pd.read_excel(uploaded_file)  ## reading the uploaded file
+    #         column_names = df.columns.tolist()
+
+    #         selected_columns = st.multiselect("Select columns for synthesis", column_names)
+
+    #         if st.button("Generate Synthesis"):
+    #             batch_size = 50  # Define the batch size
+    #             total_rows = len(df)
+    #             # print(total_rows)
+    #             result_list = []
+    #             # flat_dict = {}
+    #             keys = []
+    #             values = []
+                
+    #             # df = pd.DataFrame(columns=["Cluster Title", "DOIs"])
+    #             prompt_template = ""
+    #             for start in range(0, total_rows, batch_size):
+    #                 end = min(start + batch_size, total_rows)
+    #                 batch_df = df.iloc[start:end]
                     
-                    if "{" in text and "}" in text:
-                        start_brace = text.find("{")
-                        end_brace = text.rfind("}") + 1
-                        json_str = text[start_brace:end_brace]
-                        response = json_str.strip()
+    #                 text_list = []
+    #                 for _, row in batch_df.iterrows():
+    #                     text = ""
+    #                     for column in selected_columns:
+    #                         text += f"{column} : {str(row[column])} | "
+
+    #                     text_list.append(text.strip())
                     
-                    if response:
+    #                 combined_text = "\n\n".join(text_list)
+    #                 prompt_template = generate_synthesis_template(combined_text)
+    #                 st.text(f"Processing batch {start // batch_size + 1}: Prompt length {len(prompt_template)}")
+
+    #                 # st.text(prompt_template)
+    #                 llm_interface = LLMModelInterface()
+    #                 if model == "OpenAI":
+    #                     response = llm_interface.call_openai_gpt4_mini(prompt_template, api_key)
+    #                 elif model == "Gemini":
+    #                     # st.text(prompt_template)
+    #                     response = llm_interface.call_gemini(prompt_template, api_key, disable_parse = True)
+    #                     # response = ''
+    #                 elif model == "Llama":
+    #                     response = llm_interface.call_llama(prompt_template, api_key)
+    #                 elif model == "Mistral":
+    #                     # print("Mistral")
+    #                     response = llm_interface.call_mistral(prompt_template, api_key)
+    #                     # print(response)
+
+    #                 elif model == "DeepSeek R1":
+    #                     response = llm_interface.call_deepseek(prompt_template, api_key)
+
+    #                 else:
+    #                     st.error("Unsupported model selected.")
+    #                     break
+                    
+    #                 text = response.strip()
+                    
+    #                 if "{" in text and "}" in text:
+    #                     start_brace = text.find("{")
+    #                     end_brace = text.rfind("}") + 1
+    #                     json_str = text[start_brace:end_brace]
+    #                     response = json_str.strip()
+                    
+    #                 if response:
                         
-                        try:
-                            parsed_json = json.loads(response)
+    #                     try:
+    #                         parsed_json = json.loads(response)
                             
 
-                            for dict_key, dict_value in parsed_json.items():
-                                keys.append(dict_key)
-                                values.append(dict_value)
-                        except json.JSONDecodeError as e:
-                            st.error(f"JSON decode error in batch {start // batch_size + 1}: {e}")
-                    else:
-                        st.warning(f"No response received for batch {start // batch_size + 1}.")
+    #                         for dict_key, dict_value in parsed_json.items():
+    #                             keys.append(dict_key)
+    #                             values.append(dict_value)
+    #                     except json.JSONDecodeError as e:
+    #                         st.error(f"JSON decode error in batch {start // batch_size + 1}: {e}")
+    #                 else:
+    #                     st.warning(f"No response received for batch {start // batch_size + 1}.")
                 
-                if len(keys) > 0 and len(values) > 0:
+    #             if len(keys) > 0 and len(values) > 0:
 
-                    res = {
-                        "Cluster Title": keys,
-                        "DOIs": values
-                    }
+    #                 res = {
+    #                     "Cluster Title": keys,
+    #                     "DOIs": values
+    #                 }
 
 
-                    result_df = pd.DataFrame(res)
-                    result_df = replace_null_values(result_df)  # Ensure no null values
-                    st.dataframe(result_df)
+    #                 result_df = pd.DataFrame(res)
+    #                 result_df = replace_null_values(result_df)  # Ensure no null values
+    #                 st.dataframe(result_df)
                     
-                    # Store the analytics dataframe on MongoDB
-                    analytics_collection.insert_one({
-                        "username": username,
-                        "theme": theme_choice,
-                        "corpus": corpus_choice,
-                        "result": result_df.to_dict(orient="records")
-                    })
+    #                 # Store the analytics dataframe on MongoDB
+    #                 analytics_collection.insert_one({
+    #                     "username": username,
+    #                     "theme": theme_choice,
+    #                     "corpus": corpus_choice,
+    #                     "result": result_df.to_dict(orient="records")
+    #                 })
                     
-                    st.success("Analytics generated successfully!")
+    #                 st.success("Analytics generated successfully!")
                     
-                    csv = result_df.to_csv(index=False).encode('utf-8')
-                    st.download_button(
-                        label="Download Analytics as CSV",
-                        data=csv,
-                        file_name=f"{theme_choice}_{corpus_choice}_analytics.csv",
-                        mime='text/csv',
-                    )
-                else:
-                    st.warning("No analytics data was generated.")
-    with tab3:
-        pass
+    #                 csv = result_df.to_csv(index=False).encode('utf-8')
+    #                 st.download_button(
+    #                     label="Download Analytics as CSV",
+    #                     data=csv,
+    #                     file_name=f"{theme_choice}_{corpus_choice}_analytics.csv",
+    #                     mime='text/csv',
+    #                 )
+    #             else:
+    #                 st.warning("No analytics data was generated.")
+    # with tab3:
+    #     pass
