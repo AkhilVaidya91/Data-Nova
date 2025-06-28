@@ -27,5 +27,5 @@ tensorflow
 tensorflow-hub
 spacy
 sentence-transformers
-pandasai
+# pandasai
 nltk == 3.9.1
